@@ -1,0 +1,81 @@
+{
+  "source": {
+    "package": "figma-squircle",
+    "version": "1.1.0",
+    "tarball": "https://registry.npmjs.org/figma-squircle/-/figma-squircle-1.1.0.tgz",
+    "sha256": "4072daee0c6a6c032f9c822cf4e58fc752a20d689cf153000b7308bcf202687d",
+    "license": "MIT"
+  },
+  "fixtures": [
+    {
+      "id": "uniform-quarter",
+      "options": {
+        "width": 120,
+        "height": 80,
+        "cornerRadius": 20,
+        "cornerSmoothing": 0.25
+      }
+    },
+    {
+      "id": "uniform-high",
+      "options": {
+        "width": 120,
+        "height": 80,
+        "cornerRadius": 20,
+        "cornerSmoothing": 0.8
+      }
+    },
+    {
+      "id": "uniform-full",
+      "options": {
+        "width": 120,
+        "height": 80,
+        "cornerRadius": 20,
+        "cornerSmoothing": 1
+      }
+    },
+    {
+      "id": "constrained-clamped",
+      "options": {
+        "width": 80,
+        "height": 50,
+        "cornerRadius": 20,
+        "cornerSmoothing": 1
+      }
+    },
+    {
+      "id": "constrained-preserved",
+      "options": {
+        "width": 80,
+        "height": 50,
+        "cornerRadius": 20,
+        "cornerSmoothing": 1,
+        "preserveSmoothing": true
+      }
+    },
+    {
+      "id": "asymmetric",
+      "options": {
+        "width": 120,
+        "height": 80,
+        "topLeftCornerRadius": 35,
+        "topRightCornerRadius": 12,
+        "bottomRightCornerRadius": 26,
+        "bottomLeftCornerRadius": 6,
+        "cornerSmoothing": 0.8
+      }
+    },
+    {
+      "id": "budget-order",
+      "options": {
+        "width": 80,
+        "height": 50,
+        "topLeftCornerRadius": 25,
+        "topRightCornerRadius": 25,
+        "bottomRightCornerRadius": 5,
+        "bottomLeftCornerRadius": 5,
+        "cornerSmoothing": 1
+      }
+    }
+  ]
+}

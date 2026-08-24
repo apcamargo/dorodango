@@ -12,26 +12,28 @@
 )
 
 #align(center + horizon)[
-  #grid(
-    columns: (1fr, 1fr),
-    rows: 2,
-    align: center + top,
-    row-gutter: 12pt,
-    column-gutter: 14pt,
-    rect(
-      width: 90pt,
-      height: 60pt,
-      radius: (top-left: 50%),
-      fill: aqua,
-    ),
-    squircle(
-      width: 90pt,
-      height: 60pt,
-      radius: (top-left: 50%),
-      smoothing: 100%,
-      fill: aqua,
-    ),
+  #block(width: 100% * 2 / 3)[
+    #grid(
+      columns: (1fr, 1fr),
+      rows: 2,
+      align: center + top,
+      row-gutter: 12pt,
+      column-gutter: 14pt,
+      rect(
+        width: 90pt,
+        height: 60pt,
+        radius: (top-left: 50%),
+        fill: aqua,
+      ),
+      squircle(
+        width: 90pt,
+        height: 60pt,
+        radius: (top-left: 50%),
+        smoothing: 100%,
+        fill: aqua,
+      ),
 
-    text[Rounded rectangle], text[Squircle],
-  )
+      text[Rounded rectangle], text[Squircle],
+    )
+  ]
 ]

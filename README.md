@@ -51,9 +51,10 @@ In a Typst document, import the `dorodango` package:
 
 ## Customize squircle corners
 
-- `smoothing: 0%` produces an ordinary rounded rectangle.
-- Higher values make the edge-to-corner transition more gradual. At `100%`, the corner has no circular arc.
-- On a small shape, the default reduces smoothing until the corner fits. Set `preserve-smoothing: true` to keep the requested smoothing, which can make the corner look compressed.
+Two parameters control the appearance of a squircle's corners:
+
+- `smoothing` controls how gradually a straight edge blends into its rounded corner. At `0%`, the shape is an ordinary rounded rectangle. Higher values make the transition more gradual, and at `100%` the circular arc has zero length and the two Bézier transitions meet at a single point.
+- `preserve-smoothing` determines how the corner adapts when its requested radius and smoothing do not both fit.
 
 The shapes below share the same size and radius. The final shape preserves its requested smoothing after it no longer fits.
 
@@ -93,6 +94,6 @@ The shapes below share the same size and radius. The final shape preserves its r
   />
   <img
     src="assets/smoothing-comparison-light.svg"
-    alt="Three squircles of the same size and corner radius. The first and second set the smoothing parameter to 5% and 100%, respectively. The third adds preserve-smoothing, keeping the full radius and looking visibly compressed at the corners."
+    alt="Three squircles of the same size and corner radius. The first and second set the smoothing parameter to 5% and 100%, respectively. The third adds preserve-smoothing, retaining full smoothing and looking visibly compressed at the corners."
   />
 </picture>

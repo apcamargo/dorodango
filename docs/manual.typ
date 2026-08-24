@@ -114,7 +114,7 @@ A squircle is a rounded rectangle whose corners blend smoothly into its straight
   )
 ]
 
-`dorodango` draws squircles by placing two cubic Bézier transitions between the circular portion of each corner and its adjoining straight edges#footnote[#link("https://www.figma.com/blog/desperately-seeking-squircles/")[Daniel Furse, "Desperately seeking squircles"]]. The Bézier control points determine the extent and curvature profile of these transitions and, therefore, the smoothness of the corners. When the adjoining straight edges do not provide enough room for the full transitions, the transitions are normally shortened to fit. Alternatively, the Bézier handles can be shortened, compressing the corner while preserving the intended smoothness#footnote[#link("https://github.com/phamfoo/figma-squircle")[phamfoo/figma-squircle implementation]].
+`dorodango` draws squircles by placing two cubic Bézier transitions between the circular portion of each corner and its adjoining straight edges#footnote[#link("https://www.figma.com/blog/desperately-seeking-squircles/")[Daniel Furse, "Desperately seeking squircles"]]. The Bézier control points determine the extent and curvature profile of these transitions and, therefore, the smoothness of the corners. When the adjoining straight edges do not provide enough room for the full transitions, the transitions are normally shortened to fit. Alternatively, the Bézier handles can be shortened, compressing the corner while preserving the intended smoothness#footnote[#link("https://github.com/JaceThings/Lisse")[JaceThings/Lisse implementation]].
 
 = API reference
 
@@ -264,7 +264,12 @@ A squircle is a rounded rectangle whose corners blend smoothly into its straight
 
 == Preserve smoothing
 
-`preserve-smoothing` decides how constrained corners handle excess smoothing. In the example below, `false` reduces smoothing, while `true` retains it and compresses the Bézier handles.
+Large radii and high smoothing each need room along the edges beside a corner and small elements may not have enough room for both. `preserve-smoothing` controls whether radius or smoothing takes priority.
+
+- `preserve-smoothing: false` keeps the requested radius, within the limits of the shape, and lowers the smoothing value until the corner fits.
+- `preserve-smoothing: true` keeps the requested smoothing and the circular arc derived from the radius. To make the corner fit, it shortens the Bézier transitions between the straight edges and that arc.
+
+To prevent adjacent corners from overlapping, `dorodango` first determines how much of each adjoining edge a corner can use. This available space depends on the edge length and the radii of the corners at its ends. With radius $r$ and smoothing $s$, a corner initially needs $p = (1 + s) r$ along each adjoining edge. If this exceeds the available space $b$, `preserve-smoothing: false` reduces smoothing to $b / r - 1$ while keeping the radius. With `preserve-smoothing: true`, `dorodango` keeps the radius, smoothing, and circular portion of the corner, then shortens the Bézier transitions so it fits within the available space.
 
 ```example
 #grid(

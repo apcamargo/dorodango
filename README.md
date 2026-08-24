@@ -18,7 +18,7 @@ Refer to the [manual](./docs/manual.pdf) for a full API reference and usage exam
 In a Typst document, import the `dorodango` package:
 
 ```typ
-#import "@preview/dorodango:0.1.0": *
+#import "@preview/dorodango:0.2.0": *
 ```
 
 `dorodango` provides a `squircle` function that mirrors the built-in `rect` element but adds parameters for controlling corner smoothing. The example below compares a rectangle and a squircle of the same size and corner radius, illustrating how their corner-to-edge transitions differ.

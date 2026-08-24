@@ -117,62 +117,139 @@
   _expect("preserve-smoothing", preserve-smoothing, (bool,), "boolean")
   body = _validate-body(body)
 
-  // Sides the caller left out of a dictionary fall back to the parameter's
-  // own default, the way `rect`'s folding fields do -- so `inset: (top:
-  // 20pt)` still pads the other three sides by 5pt.
+  // Sides left out of a dictionary fall back to the parameter default, as
+  // `rect`'s folding fields do: `inset: (top: 20pt)` still pads the rest 5pt.
   let ins = _resolve-edges(inset, default: 5pt)
   let base-outs = _resolve-edges(outset, default: 0pt)
   let radius-corners = _resolve-corners(radius, default: 0pt)
   let smoothing-corners = _resolve-corners(smoothing, default: 60%)
 
-  // What `rect` actually strokes each side with, `auto` resolved.
+  // What `rect` strokes each side with, `auto` resolved.
   let sides = _stroke-sides(stroke, fill != none)
     .pairs()
     .map(((k, v)) => (k, _fixed(v)))
     .to-dict()
-  let uniform = (
-    _stroke-eq(sides.left, sides.top)
-      and _stroke-eq(sides.top, sides.right)
-      and _stroke-eq(sides.right, sides.bottom)
-  )
   let plain = (
-    uniform and _corner-order.all(c => _rel-is-zero(radius-corners.at(c)))
+    _corner-order.all(c => _rel-is-zero(radius-corners.at(c)))
+      and _fixed-eq(sides.left, sides.top)
+      and _fixed-eq(sides.top, sides.right)
+      and _fixed-eq(sides.right, sides.bottom)
   )
 
-  layout(container-size => context {
+  // Precompute argument-dependent values outside `draw`.
+
+  // Half thicknesses, `none` where a side is unstroked. `radius` is the radius
+  // of the stroke's outer edge, so the stroked outline is pulled in by one.
+  let half = sides
+    .pairs()
+    .map(((k, v)) => (k, if v == none { none } else { v.thickness / 2 }))
+    .to-dict()
+
+  // Resolving against a literal `1pt` makes this a plain 0-to-1 factor.
+  let smoothings = _corner-order
+    .map(c => (
+      c,
+      calc.max(
+        0.0,
+        calc.min(1.0, _resolve-scalar(smoothing-corners.at(c), 1pt) / 1pt),
+      ),
+    ))
+    .to-dict()
+
+  // The two strokes meeting at a corner are drawn as one piece only if they
+  // agree. Otherwise the outline is cut open there.
+  let same = _corner-order
+    .map(c => (
+      c,
+      _same-stroke(sides.at(_side-ccw.at(c)), sides.at(_side-cw.at(c))),
+    ))
+    .to-dict()
+
+  // Clockwise runs of sides sharing a pen, cut at each pen-change corner.
+  let runs = ()
+  let cut = _corner-order.find(c => not same.at(c))
+  if cut != none {
+    let current = cut
+    let last = cut
+    for _ in range(4) {
+      current = _next-cw.at(current)
+      if same.at(current) { continue }
+      runs.push((last, current))
+      last = current
+    }
+  } else if sides.top != none {
+    runs.push(("top-left", "top-left"))
+  }
+
+  // Everything about a run except whether its corners are too tight for the
+  // pen, which needs the resolved size. Unstroked runs drop out here.
+  let segments = runs
+    .map(((start, end)) => {
+      let side-stroke = sides.at(_side-cw.at(start))
+      if side-stroke == none { return none }
+      let start-cap = side-stroke.cap
+      (
+        start: start,
+        end: end,
+        stroke: side-stroke,
+        start-cap: start-cap,
+        end-cap: {
+          let s = sides.at(_side-ccw.at(end))
+          if s == none { start-cap } else { s.cap }
+        },
+        solid: _is-solid(side-stroke),
+      )
+    })
+    .filter(s => s != none)
+
+  // Corners where an outline is cut in two, so `_piece` can skip the halves
+  // everywhere else. A single closed run is cut nowhere.
+  let split-corners = ()
+  for s in segments {
+    if s.start != s.end {
+      for c in (s.start, s.end) {
+        if c not in split-corners { split-corners.push(c) }
+      }
+    }
+  }
+
+  // `layout`'s closure is already contextual, so `measure` needs no `context`.
+  layout(container-size => {
     let cw = container-size.width
     let ch = container-size.height
     let unbounded(l) = calc.abs(l / 1pt) == calc.inf
 
-    // In an unbounded region `rect` resolves a ratio to zero -- `rect(width:
-    // 50%)` measures 0pt wide on an auto-width page -- and keeps only the
-    // absolute part of a `relative`.
+    // In an unbounded region `rect` resolves a ratio to zero and keeps only
+    // the absolute part of a `relative`.
     let resolve-size(val, basis) = {
       if not unbounded(basis) { _resolve-scalar(val, basis) } else if (
         type(val) == ratio
       ) { 0pt } else if type(val) == relative { val.length } else { val }
     }
 
-    // `measure(body, width: X)` runs Typst's real line-breaking at X and
-    // returns the *tight* width of the resulting layout (the widest actual
-    // line), which is `<= X` and equals the natural width when the content
-    // fits on one line. Since insets resolve against the box's own final
-    // size, the box width and the width fed to `measure` are mutually
-    // dependent. Fixed-point iteration converges to the same width `rect`
-    // computes.
-    let w = if width != auto {
-      resolve-size(width, cw)
+    // `measure(body, width: X)` returns tight width `<= X`. Keep the result for
+    // auto-height at that width.
+    let (w, measured) = if width != auto {
+      (resolve-size(width, cw), none)
     } else if body == none {
       // `rect`'s body-less default is `Size::new(45pt, 30pt).min(region.size)`.
-      calc.min(45pt, cw)
+      (calc.min(45pt, cw), none)
     } else if unbounded(cw) {
-      // Nothing can line-break in an unbounded region, so the fixed point
-      // collapses to the closed form `rect` uses directly.
-      _resolve-auto-dim(measure(body).width, ins.left, ins.right)
+      // Nothing can line-break in an unbounded region, so there is no fixed
+      // point to solve.
+      let m = measure(body)
+      (_resolve-auto-dim(m.width, ins.left, ins.right), m)
+    } else if type(ins.left) == length and type(ins.right) == length {
+      // Absolute padding does not depend on the box width: lay the body out
+      // once in what the region leaves, then add the padding back.
+      let m = measure(body, width: calc.max(0pt, cw - ins.left - ins.right))
+      (calc.min(m.width + ins.left + ins.right, cw), m)
     } else {
+      // A ratio inset resolves against the box's own final size, so the box
+      // width and the width fed to `measure` are mutually dependent.
       let w-fp = cw
-      // Usually settled within a few steps. The cap is there for the cases
-      // where discrete line breaking makes the iteration oscillate instead.
+      // Usually settles in a few steps. The cap catches the oscillation that
+      // discrete line breaking can cause.
       for _ in range(40) {
         let pl = _resolve-scalar(ins.left, w-fp)
         let pr = _resolve-scalar(ins.right, w-fp)
@@ -182,7 +259,7 @@
         w-fp = next
         if settled { break }
       }
-      calc.min(w-fp, cw)
+      (calc.min(w-fp, cw), none)
     }
 
     // Everything below only needs the final box size, which for a fractional
@@ -198,8 +275,8 @@
       let out-w = w + outs.left + outs.right
       let out-h = h + outs.top + outs.bottom
 
-      // `rect` keeps a plain rectangle primitive for the simplest case, and
-      // that one is closed -- so its corners are joined, not capped.
+      // `rect` keeps a plain rectangle primitive here, and it is closed, so
+      // corners are joined rather than capped.
       let shapes = if plain {
         (
           (
@@ -222,18 +299,9 @@
           bottom-left: (0pt, out-h),
         )
 
-        // Half thicknesses, `none` where a side is not stroked at all. `rect`
-        // works in these throughout: `radius` is the radius of the stroke's
-        // outer edge, so the outline it strokes is pulled in by one of them.
-        let half = sides
-          .pairs()
-          .map(((k, v)) => (k, if v == none { none } else { v.thickness / 2 }))
-          .to-dict()
-
-        // Per-corner control points, following `rect`'s own `ControlPoints`:
-        // the two adjacent half thicknesses decide both how far the outer and
-        // inner edges sit from the corner and how much of the radius each of
-        // the three outlines keeps.
+        // Per-corner control points, following `rect`'s `ControlPoints`. The
+        // two adjacent half thicknesses set how far the outer and inner edges
+        // sit from the corner and how much radius each outline keeps.
         let base-radius = calc.min(calc.abs(out-w), calc.abs(out-h)) / 2
         let control = (:)
         for corner in _corner-order {
@@ -276,25 +344,11 @@
               sc,
               _vadd(_vscale(edge-out, sb), _vscale(edge-in, sa)),
             ),
-            // The two adjacent strokes are drawn as one piece only if they
-            // agree. Otherwise the outline is cut open here.
-            same: _same-stroke(
-              sides.at(_side-ccw.at(corner)),
-              sides.at(_side-cw.at(corner)),
-            ),
           ))
         }
 
-        let smoothings = (:)
-        for corner in _corner-order {
-          let s = _resolve-scalar(smoothing-corners.at(corner), 1pt) / 1pt
-          smoothings.insert(corner, calc.max(0.0, calc.min(1.0, s)))
-        }
-
-        // Builds one of the three outlines. Each is a rounded rectangle in its
-        // own right, with its own corner points, radii and smoothing budgets.
-        // `split` picks where each corner is cut in two, which `rect` derives
-        // from the corner's outer point rather than from the arc's midpoint.
+        // Builds one rounded outline with its own points, radii, and budgets.
+        // `splits` marks `rect` cuts from the outer point. Omitted corners stay whole.
         let contour(pt-key, r-key, splits) = {
           let pts = (:)
           let radii = (:)
@@ -313,7 +367,9 @@
           for corner in _corner-order {
             out.insert(corner, _piece(
               corner,
-              control.at(corner).at(pt-key),
+              pts.at(corner),
+              // Not `radii`: that is clamped for the budget, and `_piece`
+              // needs a negative radius to pull a sharp corner inward.
               control.at(corner).at(r-key),
               _corner-params(
                 radii.at(corner),
@@ -321,27 +377,50 @@
                 budget.at(corner),
                 preserve-smoothing,
               ),
-              split: splits.at(corner),
+              split: splits.at(corner, default: none),
             ))
           }
           out
         }
 
-        // Where `rect` cuts each outline in half. The middle and inner cuts
-        // are radial from their own centers toward the outer corner. The outer
-        // cut is where the ray from the inner center through the outer corner
-        // crosses the outer arc.
+        // A corner has to be filled rather than stroked when the two pens
+        // differ, or when the pen is wider than what is left of the radius.
+        let fill-corner(corner) = {
+          let c = control.at(corner)
+          let sb-val = if c.sb-set { c.sb } else { none }
+          let sa-val = if c.sa-set { c.sa } else { none }
+          sb-val != sa-val or c.r-mid < c.sb
+        }
+        let fill-corners(start, end) = {
+          let any = fill-corner(start) or fill-corner(end)
+          let cur = _next-cw.at(start)
+          while cur != end {
+            any = any or fill-corner(cur)
+            cur = _next-cw.at(cur)
+          }
+          any
+        }
+
+        let segs = segments.map(s => (
+          ..s,
+          ring: s.solid and fill-corners(s.start, s.end),
+        ))
+
+        // A filled ring follows the outer and inner edges, a stroke and the
+        // fill the middle one. Only what is read below gets built.
+        let need-ring = segs.any(s => s.ring)
+        let need-mid = fill != none or segs.any(s => not s.ring)
+
+        // `rect` cuts middle and inner outlines radially toward the outer corner.
+        // The outer cut is that ray's intersection with the outer arc.
         let mid-splits = (:)
         let inner-splits = (:)
         let outer-splits = (:)
-        for corner in _corner-order {
+        for corner in split-corners {
           let c = control.at(corner)
           let (edge-in, edge-out, ..) = _corner-geom.at(corner)
           let diag = _vadd(edge-in, edge-out)
           let o = c.pt-outer
-          let center-mid = _vadd(c.pt-mid, _vscale(diag, c.r-mid))
-          let center-inner = _vadd(c.pt-inner, _vscale(diag, c.r-inner))
-          let center-outer = _vadd(c.pt-outer, _vscale(diag, c.r-outer))
           let along(center, from, r) = {
             let d = _vsub(from, center)
             let h = _hypot(d)
@@ -349,31 +428,41 @@
               _vadd(center, _vscale(d, r / h))
             }
           }
-          mid-splits.insert(corner, along(center-mid, o, c.r-mid))
-          inner-splits.insert(corner, along(center-inner, o, c.r-inner))
-
-          // https://math.stackexchange.com/a/311956
-          let d = _vsub(o, center-inner)
-          let g = _vsub(center-inner, center-outer)
-          let dx = d.at(0) / 1pt
-          let dy = d.at(1) / 1pt
-          let gx = g.at(0) / 1pt
-          let gy = g.at(1) / 1pt
-          let qa = dx * dx + dy * dy
-          let qb = 2 * (dx * gx + dy * gy)
-          let qc = gx * gx + gy * gy - (c.r-outer / 1pt) * (c.r-outer / 1pt)
-          let t = if qa == 0 { 1.0 } else {
-            (-qb + calc.sqrt(calc.max(0.0, qb * qb - 4 * qa * qc))) / (2 * qa)
+          if need-mid {
+            let center-mid = _vadd(c.pt-mid, _vscale(diag, c.r-mid))
+            mid-splits.insert(corner, along(center-mid, o, c.r-mid))
           }
-          outer-splits.insert(corner, _vadd(center-inner, _vscale(d, t)))
+          if need-ring {
+            let center-inner = _vadd(c.pt-inner, _vscale(diag, c.r-inner))
+            let center-outer = _vadd(c.pt-outer, _vscale(diag, c.r-outer))
+            inner-splits.insert(corner, along(center-inner, o, c.r-inner))
+
+            // https://math.stackexchange.com/a/311956
+            let d = _vsub(o, center-inner)
+            let g = _vsub(center-inner, center-outer)
+            let dx = d.at(0) / 1pt
+            let dy = d.at(1) / 1pt
+            let gx = g.at(0) / 1pt
+            let gy = g.at(1) / 1pt
+            let qa = dx * dx + dy * dy
+            let qb = 2 * (dx * gx + dy * gy)
+            let qc = gx * gx + gy * gy - (c.r-outer / 1pt) * (c.r-outer / 1pt)
+            let t = if qa == 0 { 1.0 } else {
+              (-qb + calc.sqrt(calc.max(0.0, qb * qb - 4 * qa * qc))) / (2 * qa)
+            }
+            outer-splits.insert(corner, _vadd(center-inner, _vscale(d, t)))
+          }
         }
 
-        let outer = contour("pt-outer", "r-outer", outer-splits)
-        let mid = contour("pt-mid", "r-mid", mid-splits)
-        let inner = contour("pt-inner", "r-inner", inner-splits)
+        let outer = if need-ring {
+          contour("pt-outer", "r-outer", outer-splits)
+        }
+        let mid = if need-mid { contour("pt-mid", "r-mid", mid-splits) }
+        let inner = if need-ring {
+          contour("pt-inner", "r-inner", inner-splits)
+        }
 
-        // A run of sides drawn with one pen, stroked along the middle outline.
-        // `rect` leaves this path open, so where a corner is sharp the two
+        // One-pen middle-outline run. `rect` leaves it open, so sharp-corner
         // butt ends meet without filling the square between them.
         let stroke-segment(start, end) = {
           let out = ()
@@ -406,9 +495,8 @@
           out
         }
 
-        // A cap is only drawn where a stroke really ends, which is where the
-        // neighboring side is unstroked. Small radii keep the plain butt end,
-        // since anything else would be misshapen there.
+        // Draw caps beside unstroked sides. Small radii keep butt ends to avoid
+        // distortion.
         let cap-at(corner, cap-type, at-start) = {
           let c = control.at(corner)
           let co = outer.at(corner)
@@ -441,10 +529,8 @@
           }
         }
 
-        // A run of sides drawn as a filled ring instead of a stroke: clockwise
-        // along the outer edge, then back counter-clockwise along the inner
-        // one. `rect` switches to this whenever the two strokes meeting at a
-        // corner differ in thickness, or the corner is too tight for the pen.
+        // A run drawn as a filled ring: clockwise along the outer edge, then
+        // back counter-clockwise along the inner one.
         let fill-segment(start, end, start-cap, end-cap) = {
           let out = ()
           if start == end {
@@ -513,30 +599,11 @@
           out + (curve.close(mode: "straight"),)
         }
 
-        // A corner has to be filled rather than stroked when the two pens
-        // differ, or when the pen is wider than what is left of the radius.
-        let fill-corner(corner) = {
-          let c = control.at(corner)
-          let sb-val = if c.sb-set { c.sb } else { none }
-          let sa-val = if c.sa-set { c.sa } else { none }
-          sb-val != sa-val or c.r-mid < c.sb
-        }
-        let fill-corners(start, end) = {
-          let any = fill-corner(start) or fill-corner(end)
-          let cur = _next-cw.at(start)
-          while cur != end {
-            any = any or fill-corner(cur)
-            cur = _next-cw.at(cur)
-          }
-          any
-        }
-
         let below = ()
         let above = ()
         if fill != none {
-          // The filled area stops in the middle of the stroke, so it follows
-          // the middle outline -- which is also the one a plain stroke runs
-          // along.
+          // The fill stops in the middle of the stroke, so it follows the
+          // middle outline.
           let fill-path = {
             let c = mid.top-left
             let out = if c.arc {
@@ -552,59 +619,20 @@
           }
           below.push((fill: fill, stroke: none, elems: fill-path))
         }
-        // A segment is either stroked (drawn under the filled ones, as
-        // `rect` orders them) or filled.
-        let build(start, end) = {
-          let side-stroke = sides.at(_side-cw.at(start))
-          if side-stroke == none { return none }
-          let start-cap = side-stroke.cap
-          let end-cap = {
-            let s = sides.at(_side-ccw.at(end))
-            if s == none { start-cap } else { s.cap }
-          }
-          if _is-solid(side-stroke) and fill-corners(start, end) {
-            (
-              on-top: true,
-              shape: (
-                fill: side-stroke.paint,
-                stroke: none,
-                elems: fill-segment(start, end, start-cap, end-cap),
-              ),
-            )
+        // Stroked runs go under the filled ones, as `rect` orders them.
+        for s in segs {
+          if s.ring {
+            above.push((
+              fill: s.stroke.paint,
+              stroke: none,
+              elems: fill-segment(s.start, s.end, s.start-cap, s.end-cap),
+            ))
           } else {
-            (
-              on-top: false,
-              shape: (
-                fill: none,
-                stroke: side-stroke,
-                elems: stroke-segment(start, end),
-              ),
-            )
-          }
-        }
-
-        let segments = ()
-        let cut = _corner-order.find(c => not control.at(c).same)
-        if cut != none {
-          // Start at a corner where the pen changes and walk clockwise,
-          // cutting the outline at every other such corner.
-          let current = cut
-          let last = cut
-          for _ in range(4) {
-            current = _next-cw.at(current)
-            if control.at(current).same { continue }
-            segments.push((last, current))
-            last = current
-          }
-        } else if sides.top != none {
-          segments.push(("top-left", "top-left"))
-        }
-
-        for (start, end) in segments {
-          let seg = build(start, end)
-          if seg == none { continue }
-          if seg.on-top { above.push(seg.shape) } else {
-            below.push(seg.shape)
+            below.push((
+              fill: none,
+              stroke: s.stroke,
+              elems: stroke-segment(s.start, s.end),
+            ))
           }
         }
         below + above
@@ -617,19 +645,16 @@
         curve(fill: s.fill, stroke: s.stroke, ..s.elems),
       ))
 
-      box(width: w, height: h, [ #drawn.join() #box(
-          width: 100%,
-          height: 100%,
-          inset: ins,
-          body,
-        ) ])
+      box(
+        width: w,
+        height: h,
+        drawn.join() + box(width: 100%, height: 100%, inset: ins, body),
+      )
     }
 
     if type(height) == fraction {
-      // A fraction is resolved by the layout engine, and `layout()` reports
-      // the region it was measured against rather than the resolved size.
-      // A ratio inside the resolved block does see it, though, so a second
-      // `layout()` under a `100%` block recovers the drawn height.
+      // `layout()` reports a fraction's region, not its resolved size. Nesting
+      // under `100%` recovers the drawn height for ratio insets.
       block(
         width: w,
         height: height,
@@ -642,12 +667,15 @@
         ),
       )
     } else {
-      // Re-measure at the resolved width so wrapped text yields an accurate
-      // height, matching how `rect` lays out content before sizing to it.
+      // Laid out at the resolved width so wrapped text is accounted for, as
+      // `rect` does before sizing to its content.
       let h = if height != auto {
         resolve-size(height, ch)
       } else if body == none {
         calc.min(30pt, ch)
+      } else if measured != none {
+        // Reuse the measurement at the final inner width.
+        _resolve-auto-dim(measured.height, ins.top, ins.bottom)
       } else {
         let inner-w = calc.max(
           0pt,

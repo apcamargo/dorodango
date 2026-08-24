@@ -1,8 +1,7 @@
 #import "validation.typ": *
 
 // `Sides`' precedence: the side's own key, then its axis key, then `rest`,
-// then the parameter's default (which is what `rect`'s folding fields fall
-// back to for any side the caller left out).
+// then the parameter's default, as `rect`'s folding fields do.
 #let _sides-from-dict(val, default: none) = {
   let pick(side, axis) = val.at(
     side,
@@ -22,12 +21,9 @@
   }
 }
 
-// `Corners`' precedence, which is *not* the same shape as `Sides`': a corner
-// takes its own key first, then the vertical side key, then the horizontal
-// one -- and `rest` is folded in at the side level, so `rest` outranks
-// `left`/`right` whenever the matching `top`/`bottom` key is absent. Hence
-// `(left: 3pt, rest: 4pt)` is a uniform 4pt in `rect`, and
-// `(top: 20pt, left: 5pt)` puts 20pt on the top-left corner.
+// `Corners` resolve own, vertical, then horizontal keys. Side-level `rest`
+// outranks `left`/`right` without a matching `top`/`bottom`: `(left: 3pt,
+// rest: 4pt)` is uniform, while `(top: 20pt, left: 5pt)` gives top-left 20pt.
 #let _resolve-corner-dict(val, default: 0pt) = {
   let rest = val.at("rest", default: none)
   let side(name) = val.at(name, default: rest)
@@ -63,11 +59,8 @@
   }
 }
 
-// Splits a `stroke` argument into the four sides `rect` would stroke.
-// A per-side dictionary suppresses the `auto` default on the sides it omits:
-// `rect(stroke: (top: red))` strokes only the top edge, and `rect(stroke: (:))`
-// strokes nothing. `auto` itself means a 1pt black stroke, but only when
-// nothing fills the shape.
+// Per-side dictionaries suppress `auto` on omitted sides: `(top: red)` strokes
+// only the top and `(:)` nothing. `auto` is 1pt black only without a fill.
 #let _stroke-sides(val, has-fill) = {
   if val == auto {
     let s = if has-fill { none } else { 1pt + black }
@@ -102,21 +95,36 @@
     )
 )
 
-// A gradient or a tiling never compares equal to itself (`g == g` is `false`),
-// so two strokes have to be told apart through their representation.
-#let _stroke-eq(a, b) = repr(a) == repr(b)
+// A gradient or tiling never compares equal to itself (`g == g` is `false`),
+// so paints are compared through their representation.
+#let _paint-eq(a, b) = repr(a) == repr(b)
 
-// Whether the two strokes meeting at a corner may be drawn as one piece.
-// Mirrors `ControlPoints::same`: solid strokes are filled, so only the paint
-// and the dash pattern have to agree; a dashed stroke is really stroked, so
-// its cap and thickness matter too.
+// Field by field so that `repr` runs on the paints only.
+#let _fixed-eq(a, b) = {
+  if a == none or b == none {
+    a == none and b == none
+  } else {
+    (
+      a.thickness == b.thickness
+        and a.cap == b.cap
+        and a.join == b.join
+        and a.dash == b.dash
+        and a.miter-limit == b.miter-limit
+        and _paint-eq(a.paint, b.paint)
+    )
+  }
+}
+
+// Whether the two strokes at a corner may be drawn as one piece. Mirrors
+// `ControlPoints::same`: solid strokes are filled, so only paint and dash have
+// to agree. A dashed stroke is stroked, so cap and thickness matter too.
 #let _same-stroke(a, b) = {
   if a == none and b == none {
     true
   } else if a == none or b == none {
     false
   } else {
-    let filled-same = _stroke-eq(a.paint, b.paint) and a.dash == b.dash
+    let filled-same = _paint-eq(a.paint, b.paint) and a.dash == b.dash
     let stroked-same = a.cap == b.cap and a.thickness == b.thickness
     filled-same and (_is-solid(a) or stroked-same)
   }

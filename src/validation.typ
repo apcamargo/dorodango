@@ -1,7 +1,7 @@
 #let _fail(msg) = panic("squircle: " + msg)
 
-// Joins a list the way Typst's own diagnostics do: `a, b, and c`. `join` gets
-// every case right except two items, which it renders as `a, and b`.
+// Joins like Typst's own diagnostics: `a, b, and c`. `join` renders two items
+// as `a, and b`, hence the special case.
 #let _oxford(items, conj) = {
   if items.len() == 2 {
     items.at(0) + " " + conj + " " + items.at(1)
@@ -33,9 +33,8 @@
 
 #let _relative-types = (length, ratio, relative)
 
-// The wording here is deliberately *not* `_list-types(accepted)`: that would
-// spell the union out as "auto, length, ratio, or relative length", where
-// `rect` says "auto or relative length". Keep it hand-written.
+// Not `_list-types(accepted)`: that spells the union out as "auto, length,
+// ratio, or relative length", where `rect` says "auto or relative length".
 #let _validate-size(name, value, fraction-ok: false) = {
   let accepted = (type(auto),) + _relative-types
   if fraction-ok { accepted.push(fraction) }
@@ -54,8 +53,7 @@
   "paint or none",
 )
 
-// `radius` and `smoothing` take a relative scalar or a corner dictionary.
-// Unlike `inset`/`outset` there are no `x`/`y` keys -- `rect` rejects them too.
+// No `x`/`y` keys here, unlike `_side-keys`. `rect` rejects them too.
 #let _corner-keys = (
   "top-left",
   "top-right",
@@ -68,13 +66,9 @@
   "rest",
 )
 
-// `inset` and `outset` take a relative scalar or a side dictionary.
 #let _side-keys = ("left", "top", "right", "bottom", "x", "y", "rest")
 
-// Whether a value is a `Sides` dictionary rather than a scalar or some other
-// kind of dictionary. `stroke` needs this to tell a per-side dictionary from a
-// dictionary of stroke properties, and `_stroke-sides` needs the same rule
-// again when it folds one.
+// Tells a per-side dictionary from a dictionary of stroke properties.
 #let _is-side-dict(val) = (
   type(val) == dictionary and _bad-keys(val, _side-keys).len() == 0
 )
@@ -100,9 +94,8 @@
 
 #let _stroke-keys = ("paint", "thickness", "cap", "join", "dash", "miter-limit")
 
-// Ordered so that `_list-types` renders them the way `rect` does. A side of a
-// per-side dictionary additionally takes `none`, meaning "leave this edge
-// unstroked", but not `auto` -- there is no per-side default to ask for.
+// Ordered so that `_list-types` renders them the way `rect` does. A side also
+// takes `none` (leave unstroked) but not `auto`, having no per-side default.
 #let _stroke-input-types = (length, color, gradient, tiling, dictionary, stroke)
 #let _stroke-side-types = _stroke-input-types + (type(none),)
 
@@ -122,9 +115,8 @@
   if _is-side-dict(value) {
     let out = (:)
     for (key, item) in value {
-      // `auto` is the one input a whole `stroke` takes that a single side does
-      // not, so it is rejected here rather than by `_as-stroke`, whose list is
-      // the shorter one.
+      // `auto` is the one input a whole `stroke` takes that a side does not,
+      // so it is rejected here rather than by `_as-stroke`.
       if item == auto {
         _fail(
           "stroke."
@@ -146,8 +138,8 @@
     return _as-stroke("stroke", value)
   }
 
-  // Neither kind of dictionary: either a key belongs to no set at all, or the
-  // two sets were mixed.
+  // Neither kind of dictionary: either a key belongs to no set, or the two
+  // sets were mixed.
   let all-keys = _side-keys + _stroke-keys
   let bad = _bad-keys(value, all-keys)
   if bad.len() > 0 {
@@ -158,10 +150,8 @@
 }
 
 #let _validate-body(args) = {
-  // The sink that makes the body an optional *positional* parameter also
-  // catches every misspelt parameter name, so the two have to be told apart:
-  // `body:` gets the explanation, anything else gets `rect`'s own wording for
-  // an argument that does not exist.
+  // This positional sink also catches misspelt names. Explain `body:`, then
+  // use `rect`'s wording for any other unknown argument.
   let named = args.named()
   if "body" in named {
     _fail(

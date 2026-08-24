@@ -18,7 +18,13 @@
     align: center + top,
     row-gutter: 12pt,
     column-gutter: 14pt,
-    squircle(width: 85pt, height: 55pt, radius: 20pt, fill: aqua),
+    squircle(
+      width: 85pt,
+      height: 55pt,
+      radius: 20pt,
+      smoothing: 5%,
+      fill: aqua,
+    ),
     squircle(
       width: 85pt,
       height: 55pt,
@@ -35,7 +41,7 @@
       fill: aqua,
     ),
 
-    [smoothing: 60%],
+    [smoothing: 5%],
     [smoothing: 100%],
     [
       smoothing: 100% #linebreak()

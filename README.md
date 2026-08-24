@@ -61,7 +61,13 @@ The shapes below share the same size and radius. The final shape preserves its r
 #grid(
   columns: (1fr, 1fr, 1fr),
   gutter: 14pt,
-  squircle(width: 85pt, height: 55pt, radius: 20pt, fill: aqua),
+  squircle(
+    width: 85pt,
+    height: 55pt,
+    radius: 20pt,
+    smoothing: 5%,
+    fill: aqua,
+  ),
   squircle(
     width: 85pt,
     height: 55pt,
@@ -87,6 +93,6 @@ The shapes below share the same size and radius. The final shape preserves its r
   />
   <img
     src="assets/smoothing-comparison-light.svg"
-    alt="Three squircles of the same size and corner radius. The first, with 0% smoothing, looks like an ordinary rounded rectangle. The second, with 100% smoothing, has its radius reduced so the smoothed corner fits. The third adds preserve-smoothing, keeping the full radius and looking visibly compressed at the corners."
+    alt="Three squircles of the same size and corner radius. The first and second set the smoothing parameter to 5% and 100%, respectively. The third adds preserve-smoothing, keeping the full radius and looking visibly compressed at the corners."
   />
 </picture>

@@ -88,6 +88,9 @@
   ///
   /// At `0%`, the corner is a quarter circle matching a rounded `rect`. At
   /// `100%`, it is two Bézier transitions with no circular arc.
+  ///
+  /// A corner's two edges normally share one available space, the smaller of
+  /// the two. See `per-edge-smoothing` to change that.
   /// -> length | ratio | relative | dictionary
   smoothing: 60%,
   /// Whether to preserve the requested smoothing when it exceeds a corner's
@@ -95,9 +98,20 @@
   ///
   /// If `false`, smoothing is reduced to fit, so further increases may not
   /// change the corner. If `true`, its arc and smoothing angles are retained by
-  /// shortening Bézier handles, which can make the corner look compressed.
+  /// compressing the Bézier transition, which can make the corner look
+  /// compressed.
   /// -> bool
   preserve-smoothing: false,
+  /// Whether each half of a corner can use all the space available on its edge
+  /// when the requested smoothing exceeds the space available along one or
+  /// both edges.
+  ///
+  /// If `false`, each corner's two transition angles stay symmetric, so if one
+  /// edge has less room for smoothing, the other half is clamped to that limit
+  /// and is less smoothed than it could be. If `true`, the two halves can be
+  /// smoothed independently.
+  /// -> bool
+  per-edge-smoothing: false,
   /// The content to place into the squircle. Strings and symbols are converted
   /// to content.
   ///
@@ -115,6 +129,7 @@
   _validate-relative-or-dict("outset", outset, _side-keys)
   _validate-relative-or-dict("smoothing", smoothing, _corner-keys)
   _expect("preserve-smoothing", preserve-smoothing, (bool,), "boolean")
+  _expect("per-edge-smoothing", per-edge-smoothing, (bool,), "boolean")
   body = _validate-body(body)
 
   // Sides left out of a dictionary fall back to the parameter default, as
@@ -362,7 +377,7 @@
             bottom: calc.abs(pts.bottom-right.at(0) - pts.bottom-left.at(0)),
             left: calc.abs(pts.bottom-left.at(1) - pts.top-left.at(1)),
           )
-          let budget = _budgets(radii, side-lens)
+          let budget = _budgets(radii, side-lens, per-edge-smoothing)
           let out = (:)
           for corner in _corner-order {
             out.insert(corner, _piece(
@@ -374,7 +389,13 @@
               _corner-params(
                 radii.at(corner),
                 smoothings.at(corner),
-                budget.at(corner),
+                budget.at(corner).ccw,
+                preserve-smoothing,
+              ),
+              _corner-params(
+                radii.at(corner),
+                smoothings.at(corner),
+                budget.at(corner).cw,
                 preserve-smoothing,
               ),
               split: splits.at(corner, default: none),

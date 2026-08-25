@@ -19,7 +19,7 @@
 #show raw.where(block: false, lang: "manual-inline"): set text(size: 9.2pt)
 
 #show raw.where(block: false, lang: "manual-inline"): box.with(
-  outset: (y: 2.7pt, x: 0.3pt),
+  outset: (y: 2.6pt, x: 0.3pt),
   inset: (x: 2.5pt),
   fill: light-gray,
   radius: 2.2pt,
@@ -114,7 +114,7 @@ A squircle is a rounded rectangle whose corners blend smoothly into its straight
   )
 ]
 
-`dorodango` draws squircles by placing two cubic Bézier transitions between the circular portion of each corner and its adjoining straight edges#footnote[#link("https://www.figma.com/blog/desperately-seeking-squircles/")[Daniel Furse, "Desperately seeking squircles"]]. The Bézier control points determine the extent and curvature profile of these transitions and, therefore, the smoothness of the corners. When the adjoining straight edges do not provide enough room for the full transitions, the transitions are normally shortened to fit. Alternatively, the Bézier handles can be shortened, compressing the corner while preserving the intended smoothness#footnote[#link("https://github.com/JaceThings/Lisse")[JaceThings/Lisse implementation]].
+`dorodango` draws squircles by placing two cubic Bézier transitions between the circular portion of each corner and its adjoining straight edges#footnote[#link("https://www.figma.com/blog/desperately-seeking-squircles/")[Daniel Furse, "Desperately seeking squircles"]]. The Bézier control points determine the extent and curvature profile of these transitions and, therefore, the smoothness of the corners. When the adjoining straight edges do not provide enough room for the full transitions, the transitions are normally shortened to fit. Alternatively, a constrained edge's Bézier transition can be compressed while preserving the intended smoothing#footnote[#link("https://github.com/JaceThings/Lisse")[JaceThings/Lisse implementation]].
 
 = API reference
 
@@ -264,12 +264,12 @@ A squircle is a rounded rectangle whose corners blend smoothly into its straight
 
 == Preserve smoothing
 
-Large radii and high smoothing each need room along the edges beside a corner and small elements may not have enough room for both. `preserve-smoothing` controls whether radius or smoothing takes priority.
+Large radii and high smoothing both consume space along a corner's two edges. When they require more space than is available, `preserve-smoothing` controls whether smoothing is reduced to fit or retained by compressing the Bézier transitions.
 
 - `preserve-smoothing: false` keeps the requested radius, within the limits of the shape, and lowers the smoothing value until the corner fits.
-- `preserve-smoothing: true` keeps the requested smoothing and the circular arc derived from the radius. To make the corner fit, it shortens the Bézier transitions between the straight edges and that arc.
+- `preserve-smoothing: true` keeps not only the requested radius, but also the requested smoothing. To make the corner fit, it shortens the Bézier transitions between the straight edges and the arc.
 
-To prevent adjacent corners from overlapping, `dorodango` first determines how much of each adjoining edge a corner can use. This available space depends on the edge length and the radii of the corners at its ends. With radius $r$ and smoothing $s$, a corner initially needs $p = (1 + s) r$ along each adjoining edge. If this exceeds the available space $b$, `preserve-smoothing: false` reduces smoothing to $b / r - 1$ while keeping the radius. With `preserve-smoothing: true`, `dorodango` keeps the radius, smoothing, and circular portion of the corner, then shortens the Bézier transitions so it fits within the available space.
+Each corner has available space along each of its two edges, determined by the edge length and the radii of the corners at either end. With radius $r$ and smoothing $s$, a corner needs $p = (1 + s) r$ along each edge. If $p$ exceeds the available space $b$, `preserve-smoothing: false` reduces smoothing to $b / r - 1$ while keeping the radius within the limits of the shape. With `preserve-smoothing: true`, the radius and requested smoothing are kept, and the Bézier transitions are shortened to fit.
 
 ```example
 #grid(
@@ -284,6 +284,32 @@ To prevent adjacent corners from overlapping, `dorodango` first determines how m
       preserve-smoothing: keep,
       fill: aqua,
     )[preserve-smoothing: #repr(keep)]
+  ]),
+)
+```
+
+== Per-edge smoothing
+
+Each half of a corner uses space along one of its two edges. The edges can have different amounts of available space---for example, on an elongated shape, the short edge may not accommodate the requested smoothing while the long edge still can. `per-edge-smoothing` controls whether the two halves share the tighter limit or use their available space independently.
+
+- `per-edge-smoothing: false` uses the smaller of the two edge budgets for both halves, keeping the corner symmetric. If one edge has less room for smoothing, the other half is also limited to it and is less smoothed than it could be.
+- `per-edge-smoothing: true` determines the response to limited space independently for each half.
+
+When `preserve-smoothing` is `false`, smoothing is reduced only for corner halves that do not have enough space for the requested smoothing. Because the two halves can have different amounts of space available, their smoothing may be reduced by different amounts, resulting in different transition angles. When `preserve-smoothing` is `true`, both halves retain the requested smoothing and transition angles. Any half without enough space instead has its Bézier transition compressed to fit.
+
+```example
+#grid(
+  rows: 2,
+  gutter: 12pt,
+  ..(false, true).map(u => align(center + horizon)[
+    #squircle(
+      width: 150pt,
+      height: 48pt,
+      radius: 25pt,
+      smoothing: 100%,
+      per-edge-smoothing: u,
+      fill: aqua,
+    )[per-edge-smoothing: #repr(u)]
   ]),
 )
 ```

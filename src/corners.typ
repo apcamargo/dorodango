@@ -47,38 +47,42 @@
   ),
 )
 
-// Per-corner straight-edge budget for rounding and smoothing. Adjacent corners
-// split each side by radius, taking the smaller share. Larger radii go first.
-#let _budgets(radii, side-lens) = {
+// Computes straight-edge budgets for a corner's two edges. Adjacent corners
+// split each shared side by their radii, with larger radii processed first.
+// `per-edge-smoothing` keeps `cw` and `ccw` separate. Otherwise both use the
+// smaller value.
+#let _budgets(radii, side-lens, per-edge-smoothing) = {
   let budget = (
-    top-left: -1pt,
-    top-right: -1pt,
-    bottom-right: -1pt,
-    bottom-left: -1pt,
+    top-left: (cw: -1pt, ccw: -1pt),
+    top-right: (cw: -1pt, ccw: -1pt),
+    bottom-right: (cw: -1pt, ccw: -1pt),
+    bottom-left: (cw: -1pt, ccw: -1pt),
   )
   for corner in _corner-order.sorted(key: c => -radii.at(c)) {
     let r = radii.at(corner)
-    // The two sides this corner shares, each with the corner at its far end.
-    let vals = (
-      (_side-cw.at(corner), _next-cw.at(corner)),
-      (_side-ccw.at(corner), _next-ccw.at(corner)),
-    ).map(pair => {
-      let (side, adj-corner) = pair
+    // `adj-field` is the neighbour's field for *this* shared side: a
+    // corner's `cw` edge is its clockwise neighbour's `ccw` edge.
+    let term(side, adj-corner, adj-field) = {
       let ar = radii.at(adj-corner)
       if r <= 0pt and ar <= 0pt { 0pt } else {
         let side-len = side-lens.at(side)
-        let adj-budget = budget.at(adj-corner)
+        let adj-budget = budget.at(adj-corner).at(adj-field)
         if adj-budget >= 0pt { side-len - adj-budget } else {
           (r / (r + ar)) * side-len
         }
       }
-    })
-    budget.at(corner) = calc.min(..vals)
+    }
+    let cw = term(_side-cw.at(corner), _next-cw.at(corner), "ccw")
+    let ccw = term(_side-ccw.at(corner), _next-ccw.at(corner), "cw")
+    budget.at(corner) = if per-edge-smoothing { (cw: cw, ccw: ccw) } else {
+      let combined = calc.min(cw, ccw)
+      (cw: combined, ccw: combined)
+    }
   }
   budget
 }
 
-// Figma's "Corner Smoothing": a, b, c, d are Bezier handle lengths for the
+// Figma's corner smoothing: a, b, c, d are Bezier handle lengths for the
 // lead-in/lead-out cubics, and arc-measure is what survives of the circular
 // arc (90deg at smoothing 0, 0deg at smoothing 1).
 // https://www.figma.com/blog/desperately-seeking-squircles/
@@ -139,10 +143,11 @@
   calc.atan2(d.at(0) / 1pt, d.at(1) / 1pt)
 }
 
-// Builds a rounded, optionally-smoothed corner. `rect` splits outer, middle,
-// and inner outlines at distinct midpoints. Returns `start`, `mid`, `end`,
-// `first`, `second`, and `full`. With `split: none`, only `full` is built.
-#let _piece(corner, pt, r, params, split: none) = {
+// Builds a rounded, optionally-smoothed corner from separate input and output
+// edge parameters. `rect` splits outer, middle, and inner outlines at distinct
+// midpoints. Returns `start`, `mid`, `end`, `first`, `second`, and `full`.
+// With `split: none`, only `full` is built.
+#let _piece(corner, pt, r, params-in, params-out, split: none) = {
   let (edge-in, edge-out, base0, base1) = _corner-geom.at(corner)
   if r <= 0pt {
     // `rect` collapses the corner onto a single point, pulled slightly inside
@@ -159,12 +164,13 @@
     )
   }
 
-  let (a, b, c, d, p, angle-alpha) = params
   let center = _vadd(pt, _vscale(_vadd(edge-in, edge-out), r))
   let neg-edge-in = _vscale(edge-in, -1)
 
-  let angle0 = base0 + angle-alpha
-  let angle1 = base1 - angle-alpha
+  // Each half-angle is at most `45deg`, so the arc endpoints cannot cross the
+  // corner's bisector.
+  let angle0 = base0 + params-in.angle-alpha
+  let angle1 = base1 - params-out.angle-alpha
 
   let on-arc(angle) = (
     center.at(0) + r * calc.cos(angle),
@@ -185,20 +191,20 @@
     )
   }
 
-  let start = _vadd(pt, _vscale(edge-in, p))
-  let arc-p1 = on-arc(angle1)
-  let end = _vadd(pt, _vscale(edge-out, p))
+  let start = _vadd(pt, _vscale(edge-in, params-in.p))
+  let end = _vadd(pt, _vscale(edge-out, params-out.p))
 
   let lead-in = _cubic(
     start,
-    _vadd(start, _vscale(neg-edge-in, a)),
-    _vadd(start, _vscale(neg-edge-in, a + b)),
+    _vadd(start, _vscale(neg-edge-in, params-in.a)),
+    _vadd(start, _vscale(neg-edge-in, params-in.a + params-in.b)),
     on-arc(angle0),
   )
+  // Mirrors `lead-in` from `end` with this edge's `a` and `b` values.
   let lead-out = _cubic(
-    arc-p1,
-    _vadd(_vadd(arc-p1, _vscale(neg-edge-in, d)), _vscale(edge-out, c)),
-    _vadd(_vadd(arc-p1, _vscale(neg-edge-in, d)), _vscale(edge-out, b + c)),
+    on-arc(angle1),
+    _vsub(end, _vscale(edge-out, params-out.a + params-out.b)),
+    _vsub(end, _vscale(edge-out, params-out.a)),
     end,
   )
 

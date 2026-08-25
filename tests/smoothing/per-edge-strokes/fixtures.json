@@ -1,0 +1,44 @@
+{
+  "source": {
+    "description": "Independent JavaScript implementation of the equations documented in docs/manual.typ"
+  },
+  "fixtures": [
+    {
+      "id": "uniform",
+      "width": 80,
+      "height": 50,
+      "radius": 20,
+      "smoothing": 1,
+      "stroke": {
+        "kind": "uniform",
+        "thickness": 4,
+        "paint": "black"
+      }
+    },
+    {
+      "id": "top-only",
+      "width": 80,
+      "height": 50,
+      "radius": 20,
+      "smoothing": 1,
+      "stroke": {
+        "kind": "top",
+        "thickness": 6,
+        "paint": "black"
+      }
+    },
+    {
+      "id": "thick-ring",
+      "width": 80,
+      "height": 20,
+      "radius": 12,
+      "smoothing": 1,
+      "stroke": {
+        "kind": "uniform",
+        "thickness": 16,
+        "paint": "black",
+        "ring": true
+      }
+    }
+  ]
+}

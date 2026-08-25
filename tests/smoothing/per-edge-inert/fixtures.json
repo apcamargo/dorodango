@@ -1,0 +1,38 @@
+{
+  "fixtures": [
+    {
+      "id": "roomy-uniform",
+      "width": 160,
+      "height": 120,
+      "radius": 10,
+      "smoothing": 1,
+      "fill": "black"
+    },
+    {
+      "id": "roomy-per-corner",
+      "width": 160,
+      "height": 120,
+      "radius": {
+        "top-left": 8,
+        "top-right": 12,
+        "bottom-right": 10,
+        "bottom-left": 6
+      },
+      "smoothing": {
+        "top-left": 1,
+        "top-right": 0.75,
+        "bottom-right": 0.5,
+        "bottom-left": 0.25
+      },
+      "fill": "black"
+    },
+    {
+      "id": "zero-smoothing-pill",
+      "width": 150,
+      "height": 50,
+      "radius": 25,
+      "smoothing": 0,
+      "fill": "black"
+    }
+  ]
+}

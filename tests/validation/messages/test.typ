@@ -34,6 +34,10 @@
   () => squircle(preserve-smoothing: 3),
   "preserve-smoothing: expected boolean, found integer",
 )
+#expect(
+  () => squircle(per-edge-smoothing: 3),
+  "per-edge-smoothing: expected boolean, found integer",
+)
 
 // The key of the offending entry is named, not just the parameter.
 #expect(
@@ -194,4 +198,10 @@
 #assert.eq(catch(() => squircle(preserve-smoothing: false)), none)
 #for value in (0, none, auto, "true", (top-left: true)) {
   assert-panic(() => squircle(preserve-smoothing: value))
+}
+
+#assert.eq(catch(() => squircle(per-edge-smoothing: true)), none)
+#assert.eq(catch(() => squircle(per-edge-smoothing: false)), none)
+#for value in (0, none, auto, "true", (top-left: true)) {
+  assert-panic(() => squircle(per-edge-smoothing: value))
 }

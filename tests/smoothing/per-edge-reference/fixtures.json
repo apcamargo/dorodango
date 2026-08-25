@@ -1,0 +1,69 @@
+{
+  "sources": {
+    "lisse": {
+      "package": "@lisse/core",
+      "version": "0.7.2",
+      "tarball": "https://registry.npmjs.org/@lisse/core/-/core-0.7.2.tgz",
+      "sha256": "63c26363e5ce92015c70fa38cc161a7a618dc33f879c065967605c5ba02cec37"
+    },
+    "dorodango-spec": {
+      "description": "Independent JavaScript implementation of the equations documented in docs/manual.typ"
+    }
+  },
+  "fixtures": [
+    {
+      "id": "horizontal-one-constrained",
+      "oracle": "lisse",
+      "width": 80,
+      "height": 50,
+      "radius": 20,
+      "smoothing": 1
+    },
+    {
+      "id": "vertical-one-constrained",
+      "oracle": "lisse",
+      "width": 50,
+      "height": 80,
+      "radius": 20,
+      "smoothing": 1
+    },
+    {
+      "id": "both-constrained",
+      "oracle": "lisse",
+      "width": 70,
+      "height": 50,
+      "radius": 20,
+      "smoothing": 1
+    },
+    {
+      "id": "pill",
+      "oracle": "lisse",
+      "width": 150,
+      "height": 50,
+      "radius": 25,
+      "smoothing": 1
+    },
+    {
+      "id": "preserved",
+      "oracle": "dorodango-spec",
+      "width": 80,
+      "height": 50,
+      "radius": 20,
+      "smoothing": 1,
+      "preserveSmoothing": true
+    },
+    {
+      "id": "radius-order",
+      "oracle": "dorodango-spec",
+      "width": 80,
+      "height": 50,
+      "radius": {
+        "top-left": 25,
+        "top-right": 25,
+        "bottom-right": 5,
+        "bottom-left": 5
+      },
+      "smoothing": 1
+    }
+  ]
+}

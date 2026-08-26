@@ -1,6 +1,8 @@
 # dorodango
 
-[![Manual](https://img.shields.io/badge/User_manual-blue)](./docs/manual.pdf) [![GitHub repository](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/apcamargo/dorodango)
+[![Typst package](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fapcamargo%2Fdorodango%2Fmain%2Ftypst.toml&query=%24.package.version&prefix=v&logo=typst&label=package&color=239DAD)](https://typst.app/universe/package/dorodango)
+[![Manual](https://img.shields.io/badge/User_manual-blue)](./docs/manual.pdf)
+[![GitHub repository](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/apcamargo/dorodango)
 
 `dorodango` is a Typst package for drawing squircles with tunable corner smoothing.
 

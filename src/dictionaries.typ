@@ -1,7 +1,6 @@
 #import "validation.typ": *
 
-// `Sides`' precedence: the side's own key, then its axis key, then `rest`,
-// then the parameter's default, as `rect`'s folding fields do.
+// Side precedence: specific side, axis, rest, then parameter default.
 #let _sides-from-dict(val, default: none) = {
   let pick(side, axis) = val.at(
     side,
@@ -21,9 +20,7 @@
   }
 }
 
-// `Corners` resolve own, vertical, then horizontal keys. Side-level `rest`
-// outranks `left`/`right` without a matching `top`/`bottom`: `(left: 3pt,
-// rest: 4pt)` is uniform, while `(top: 20pt, left: 5pt)` gives top-left 20pt.
+// Corner precedence: specific corner, vertical side, horizontal side, rest, then default.
 #let _resolve-corner-dict(val, default: 0pt) = {
   let rest = val.at("rest", default: none)
   let side(name) = val.at(name, default: rest)
@@ -59,8 +56,7 @@
   }
 }
 
-// Per-side dictionaries suppress `auto` on omitted sides: `(top: red)` strokes
-// only the top and `(:)` nothing. `auto` is 1pt black only without a fill.
+// Resolve per-side strokes. Omitted sides default to none.
 #let _stroke-sides(val, has-fill) = {
   if val == auto {
     let s = if has-fill { none } else { 1pt + black }
@@ -72,7 +68,7 @@
   }
 }
 
-// The concrete stroke `rect` ends up drawing with, `auto` fields filled in.
+// Normalize stroke fields, resolving auto values.
 #let _fixed(val) = {
   if val == none { return none }
   let s = stroke(val)
@@ -95,11 +91,10 @@
     )
 )
 
-// A gradient or tiling never compares equal to itself (`g == g` is `false`),
-// so paints are compared through their representation.
+// Compare paints via representation to handle gradients and patterns.
 #let _paint-eq(a, b) = repr(a) == repr(b)
 
-// Field by field so that `repr` runs on the paints only.
+// Compare stroke fields with paint representation equality.
 #let _fixed-eq(a, b) = {
   if a == none or b == none {
     a == none and b == none
@@ -115,9 +110,7 @@
   }
 }
 
-// Whether the two strokes at a corner may be drawn as one piece. Mirrors
-// `ControlPoints::same`: solid strokes are filled, so only paint and dash have
-// to agree. A dashed stroke is stroked, so cap and thickness matter too.
+// Check whether meeting strokes can be drawn continuously.
 #let _same-stroke(a, b) = {
   if a == none and b == none {
     true

@@ -2,7 +2,14 @@
 
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { access, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -86,11 +93,15 @@ function resolveCorners(value, fallback = 0) {
   if (typeof value === "number") {
     return Object.fromEntries(corners.map((corner) => [corner, value]));
   }
-  return Object.fromEntries(corners.map((corner) => [corner, value?.[corner] ?? fallback]));
+  return Object.fromEntries(
+    corners.map((corner) => [corner, value?.[corner] ?? fallback]),
+  );
 }
 
 function allocateBudgets(radii, sideLengths, perEdge) {
-  const budgets = Object.fromEntries(corners.map((corner) => [corner, { cw: -1, ccw: -1 }]));
+  const budgets = Object.fromEntries(
+    corners.map((corner) => [corner, { cw: -1, ccw: -1 }]),
+  );
   const ordered = [...corners].sort((a, b) => radii[b] - radii[a]);
   for (const corner of ordered) {
     const radius = radii[corner];
@@ -215,8 +226,18 @@ function buildPieces({ points, radii, smoothing, preserveSmoothing, perEdge }) {
         corner,
         points[corner],
         radii[corner],
-        cornerParams(radii[corner], smoothings[corner], budgets[corner].ccw, preserveSmoothing),
-        cornerParams(radii[corner], smoothings[corner], budgets[corner].cw, preserveSmoothing),
+        cornerParams(
+          radii[corner],
+          smoothings[corner],
+          budgets[corner].ccw,
+          preserveSmoothing,
+        ),
+        cornerParams(
+          radii[corner],
+          smoothings[corner],
+          budgets[corner].cw,
+          preserveSmoothing,
+        ),
       ),
     ]),
   );
@@ -318,7 +339,9 @@ function fillFixture(caseData, pathOverride = null) {
     perEdge: true,
   });
   const d = pathOverride ?? pathData(commands);
-  return svg(caseData.width, caseData.height, [`<path d="${d}" fill="black"/>`]);
+  return svg(caseData.width, caseData.height, [
+    `<path d="${d}" fill="black"/>`,
+  ]);
 }
 
 function uniformStrokeFixture(caseData) {
@@ -341,26 +364,37 @@ function uniformStrokeFixture(caseData) {
   const width = caseData.width + 2 * half;
   const height = caseData.height + 2 * half;
   const path = `<path d="${pathData(commands)}" fill="none" stroke="black" stroke-width="${fixed(caseData.stroke.thickness)}"/>`;
-  return { svg: svg(width, height, [path]), imageWidth: width, imageHeight: height };
+  return {
+    svg: svg(width, height, [path]),
+    imageWidth: width,
+    imageHeight: height,
+  };
 }
 
 function thickRingFixture(caseData) {
   const half = caseData.stroke.thickness / 2;
   const outerRadii = baseRadii(caseData, half);
   const innerRadii = Object.fromEntries(
-    corners.map((corner) => [corner, Math.max(0, outerRadii[corner] - 2 * half)]),
+    corners.map((corner) => [
+      corner,
+      Math.max(0, outerRadii[corner] - 2 * half),
+    ]),
   );
   const outerPoints = Object.fromEntries(
-    Object.entries(cornerPoints(caseData.width, caseData.height)).map(([corner, point]) => {
-      const { edgeIn, edgeOut } = geometry[corner];
-      return [corner, sub(point, scale(add(edgeIn, edgeOut), half))];
-    }),
+    Object.entries(cornerPoints(caseData.width, caseData.height)).map(
+      ([corner, point]) => {
+        const { edgeIn, edgeOut } = geometry[corner];
+        return [corner, sub(point, scale(add(edgeIn, edgeOut), half))];
+      },
+    ),
   );
   const innerPoints = Object.fromEntries(
-    Object.entries(cornerPoints(caseData.width, caseData.height)).map(([corner, point]) => {
-      const { edgeIn, edgeOut } = geometry[corner];
-      return [corner, add(point, scale(add(edgeIn, edgeOut), half))];
-    }),
+    Object.entries(cornerPoints(caseData.width, caseData.height)).map(
+      ([corner, point]) => {
+        const { edgeIn, edgeOut } = geometry[corner];
+        return [corner, add(point, scale(add(edgeIn, edgeOut), half))];
+      },
+    ),
   );
   const outer = translateCommands(
     closedCommands({
@@ -387,18 +421,27 @@ function thickRingFixture(caseData) {
   const width = caseData.width + 2 * half;
   const height = caseData.height + 2 * half;
   const path = `<path d="${pathData(outer)} ${pathData(inner)}" fill="black" fill-rule="evenodd"/>`;
-  return { svg: svg(width, height, [path]), imageWidth: width, imageHeight: height };
+  return {
+    svg: svg(width, height, [path]),
+    imageWidth: width,
+    imageHeight: height,
+  };
 }
 
 function topStrokeFixture(caseData) {
   const half = caseData.stroke.thickness / 2;
   const outerRadii = baseRadii(caseData);
   const innerRadii = Object.fromEntries(
-    corners.map((corner) => [corner, Math.max(0, outerRadii[corner] - 2 * half)]),
+    corners.map((corner) => [
+      corner,
+      Math.max(0, outerRadii[corner] - 2 * half),
+    ]),
   );
   const outerPoints = {};
   const innerPoints = {};
-  for (const [corner, point] of Object.entries(cornerPoints(caseData.width, caseData.height))) {
+  for (const [corner, point] of Object.entries(
+    cornerPoints(caseData.width, caseData.height),
+  )) {
     const { edgeIn, edgeOut } = geometry[corner];
     outerPoints[corner] = sub(point, scale(add(edgeIn, edgeOut), half));
     innerPoints[corner] = add(point, scale(add(edgeIn, edgeOut), half));
@@ -415,8 +458,18 @@ function topStrokeFixture(caseData) {
             corner,
             points[corner],
             radii[corner],
-            cornerParams(radii[corner], smoothings[corner], budgets[corner].ccw, false),
-            cornerParams(radii[corner], smoothings[corner], budgets[corner].cw, false),
+            cornerParams(
+              radii[corner],
+              smoothings[corner],
+              budgets[corner].ccw,
+              false,
+            ),
+            cornerParams(
+              radii[corner],
+              smoothings[corner],
+              budgets[corner].cw,
+              false,
+            ),
             base0 + Math.PI / 4,
           ),
         ];
@@ -428,7 +481,10 @@ function topStrokeFixture(caseData) {
   const raw = [
     { type: "M", to: inner["top-left"].end },
     ...reverseSegments(
-      attachFrom([{ type: "M", to: inner["top-left"].mid }, ...inner["top-left"].second]).slice(1),
+      attachFrom([
+        { type: "M", to: inner["top-left"].mid },
+        ...inner["top-left"].second,
+      ]).slice(1),
     ),
     { type: "L", to: outer["top-left"].mid },
     ...outer["top-left"].second,
@@ -436,9 +492,10 @@ function topStrokeFixture(caseData) {
     ...outer["top-right"].first,
     { type: "L", to: inner["top-right"].mid },
     ...reverseSegments(
-      attachFrom([{ type: "M", to: inner["top-right"].start }, ...inner["top-right"].first]).slice(
-        1,
-      ),
+      attachFrom([
+        { type: "M", to: inner["top-right"].start },
+        ...inner["top-right"].first,
+      ]).slice(1),
     ),
     { type: "L", to: inner["top-left"].end },
     { type: "Z" },
@@ -454,7 +511,8 @@ function topStrokeFixture(caseData) {
 }
 
 function parsePath(data) {
-  const tokens = data.match(/[A-Za-z]|[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?/gi) ?? [];
+  const tokens =
+    data.match(/[A-Za-z]|[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?/gi) ?? [];
   const commands = [];
   let index = 0;
   let current = [0, 0];
@@ -518,9 +576,13 @@ function arcCenter(command) {
   radius = Math.max(radius, Math.sqrt(lengthSquared));
   const sign = command.large === command.sweep ? -1 : 1;
   const coefficient =
-    sign * Math.sqrt(Math.max(0, (radius * radius - lengthSquared) / lengthSquared));
-  const center = [(x1 + x2) / 2 + coefficient * yPrime, (y1 + y2) / 2 - coefficient * xPrime];
-  let start = Math.atan2(y1 - center[1], x1 - center[0]);
+    sign *
+    Math.sqrt(Math.max(0, (radius * radius - lengthSquared) / lengthSquared));
+  const center = [
+    (x1 + x2) / 2 + coefficient * yPrime,
+    (y1 + y2) / 2 - coefficient * xPrime,
+  ];
+  const start = Math.atan2(y1 - center[1], x1 - center[0]);
   let delta = Math.atan2(y2 - center[1], x2 - center[0]) - start;
   if (command.sweep && delta < 0) delta += 2 * Math.PI;
   if (!command.sweep && delta > 0) delta -= 2 * Math.PI;
@@ -585,7 +647,11 @@ function distanceToSegment(point, start, end) {
       ? 0
       : Math.max(
           0,
-          Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / lengthSquared),
+          Math.min(
+            1,
+            ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) /
+              lengthSquared,
+          ),
         );
   return distance(point, [start[0] + t * dx, start[1] + t * dy]);
 }
@@ -598,7 +664,10 @@ function pathDeviation(left, right) {
       ...from.map((point) => {
         let nearest = Infinity;
         for (let index = 0; index + 1 < to.length; index++) {
-          nearest = Math.min(nearest, distanceToSegment(point, to[index], to[index + 1]));
+          nearest = Math.min(
+            nearest,
+            distanceToSegment(point, to[index], to[index + 1]),
+          );
         }
         return nearest;
       }),
@@ -609,18 +678,23 @@ function pathDeviation(left, right) {
 function assertPathsNear(label, actual, expected, tolerance = 0.03) {
   const deviation = pathDeviation(actual, expected);
   if (deviation > tolerance) {
-    throw new Error(`${label}: path deviation ${deviation} exceeds ${tolerance}`);
+    throw new Error(
+      `${label}: path deviation ${deviation} exceeds ${tolerance}`,
+    );
   }
 }
 
 async function fetchPackage(source, temporary, cache) {
   if (cache.has(source.package)) return cache.get(source.package);
   const response = await fetch(source.tarball);
-  if (!response.ok) throw new Error(`failed to download ${source.tarball}: ${response.status}`);
+  if (!response.ok)
+    throw new Error(`failed to download ${source.tarball}: ${response.status}`);
   const archive = Buffer.from(await response.arrayBuffer());
   const digest = createHash("sha256").update(archive).digest("hex");
   if (digest !== source.sha256) {
-    throw new Error(`${source.package}: SHA-256 ${digest}, expected ${source.sha256}`);
+    throw new Error(
+      `${source.package}: SHA-256 ${digest}, expected ${source.sha256}`,
+    );
   }
   const packageRoot = join(temporary, source.package.replaceAll("/", "-"));
   const archivePath = `${packageRoot}.tgz`;
@@ -666,13 +740,20 @@ function typstArguments(caseData, indent = 4) {
     `${pad}width: ${fixed(caseData.width)}pt,`,
     `${pad}height: ${fixed(caseData.height)}pt,`,
     `${pad}radius: ${typstRadius(caseData.radius, indent)},`,
-    `${pad}smoothing: ${typstValue(caseData.smoothing, indent)},`,
   ];
+  if (caseData.smoothing !== undefined) {
+    lines.push(`${pad}smoothing: ${typstValue(caseData.smoothing, indent)},`);
+  }
+  if (caseData.exponent !== undefined) {
+    lines.push(`${pad}exponent: ${fixed(caseData.exponent)},`);
+  }
   if (caseData.preserveSmoothing) lines.push(`${pad}preserve-smoothing: true,`);
   if (caseData.perEdgeSmoothing) lines.push(`${pad}per-edge-smoothing: true,`);
   if (caseData.fill) lines.push(`${pad}fill: ${caseData.fill},`);
   if (caseData.stroke?.kind === "uniform") {
-    lines.push(`${pad}stroke: ${fixed(caseData.stroke.thickness)}pt + ${caseData.stroke.paint},`);
+    lines.push(
+      `${pad}stroke: ${fixed(caseData.stroke.thickness)}pt + ${caseData.stroke.paint},`,
+    );
   } else if (caseData.stroke?.kind === "top") {
     lines.push(
       `${pad}stroke: (top: ${fixed(caseData.stroke.thickness)}pt + ${caseData.stroke.paint}),`,
@@ -702,8 +783,14 @@ async function buildOutputs(temporary) {
 
   const figmaDirectory = join(root, "tests/smoothing/figma-reference");
   const figmaManifest = await readJson(join(figmaDirectory, "fixtures.json"));
-  const figmaPackage = await fetchPackage(figmaManifest.source, temporary, packageCache);
-  const { getSvgPath } = await import(pathToFileURL(join(figmaPackage.root, "dist/index.js")));
+  const figmaPackage = await fetchPackage(
+    figmaManifest.source,
+    temporary,
+    packageCache,
+  );
+  const { getSvgPath } = await import(
+    pathToFileURL(join(figmaPackage.root, "dist/index.js"))
+  );
   const figmaCases = figmaManifest.fixtures.map((fixture) => {
     const options = fixture.options;
     const radius = options.cornerRadius ?? {
@@ -729,7 +816,10 @@ async function buildOutputs(temporary) {
       fillFixture(caseData, caseData.path),
     );
   }
-  outputs.set(join(figmaDirectory, "cases.typ"), casesTyp(figmaCases, scriptName));
+  outputs.set(
+    join(figmaDirectory, "cases.typ"),
+    casesTyp(figmaCases, scriptName),
+  );
 
   for (const caseData of figmaCases) {
     const spec = pathData(
@@ -745,9 +835,17 @@ async function buildOutputs(temporary) {
   }
 
   const perEdgeDirectory = join(root, "tests/smoothing/per-edge-reference");
-  const perEdgeManifest = await readJson(join(perEdgeDirectory, "fixtures.json"));
-  const lissePackage = await fetchPackage(perEdgeManifest.sources.lisse, temporary, packageCache);
-  const { generatePath } = await import(pathToFileURL(join(lissePackage.root, "dist/path.js")));
+  const perEdgeManifest = await readJson(
+    join(perEdgeDirectory, "fixtures.json"),
+  );
+  const lissePackage = await fetchPackage(
+    perEdgeManifest.sources.lisse,
+    temporary,
+    packageCache,
+  );
+  const { generatePath } = await import(
+    pathToFileURL(join(lissePackage.root, "dist/path.js"))
+  );
   const perEdgeCases = perEdgeManifest.fixtures.map((fixture) => ({
     ...fixture,
     perEdgeSmoothing: true,
@@ -778,11 +876,70 @@ async function buildOutputs(temporary) {
       fillFixture(caseData, path),
     );
   }
-  outputs.set(join(perEdgeDirectory, "cases.typ"), casesTyp(perEdgeCases, scriptName));
+  outputs.set(
+    join(perEdgeDirectory, "cases.typ"),
+    casesTyp(perEdgeCases, scriptName),
+  );
+
+  // Fill-only external references for the superellipse and clothoid families.
+  // The pinned Lisse package exposes the same curve families, so its
+  // `generatePath` output is a meaningful oracle. Both manifests must pin the
+  // identical Lisse source as the per-edge manifest above, whose cached fetch
+  // these blocks reuse.
+  const referenceFamilies = [
+    {
+      directory: join(root, "tests/superellipse/reference"),
+      curve: "superellipse",
+      options: (caseData) => ({ exponent: caseData.exponent }),
+    },
+    {
+      directory: join(root, "tests/clothoid/reference"),
+      curve: "clothoid",
+      options: (caseData) => ({ smoothing: caseData.smoothing }),
+    },
+  ];
+  for (const family of referenceFamilies) {
+    const manifest = await readJson(join(family.directory, "fixtures.json"));
+    if (
+      JSON.stringify(manifest.sources.lisse) !==
+      JSON.stringify(perEdgeManifest.sources.lisse)
+    ) {
+      throw new Error(
+        `${family.directory}: Lisse pin differs from the per-edge manifest`,
+      );
+    }
+    await fetchPackage(manifest.sources.lisse, temporary, packageCache);
+    const cases = manifest.fixtures.map((fixture) => ({
+      ...fixture,
+      fill: "black",
+    }));
+    for (const caseData of cases) {
+      // Cases stay inside their corner budgets and pass preserveSmoothing:
+      // false explicitly, matching dorodango's default, so both
+      // implementations take the same uncompressed code path.
+      const path = generatePath(caseData.width, caseData.height, {
+        radius: caseData.radius,
+        curve: family.curve,
+        ...family.options(caseData),
+        preserveSmoothing: false,
+      });
+      outputs.set(
+        join(family.directory, "fixtures", `${caseData.id}.svg`),
+        fillFixture(caseData, path),
+      );
+    }
+    outputs.set(
+      join(family.directory, "cases.typ"),
+      casesTyp(cases, scriptName),
+    );
+  }
 
   const inertDirectory = join(root, "tests/smoothing/per-edge-inert");
   const inertManifest = await readJson(join(inertDirectory, "fixtures.json"));
-  outputs.set(join(inertDirectory, "cases.typ"), casesTyp(inertManifest.fixtures, scriptName));
+  outputs.set(
+    join(inertDirectory, "cases.typ"),
+    casesTyp(inertManifest.fixtures, scriptName),
+  );
 
   const strokeDirectory = join(root, "tests/smoothing/per-edge-strokes");
   const strokeManifest = await readJson(join(strokeDirectory, "fixtures.json"));
@@ -801,9 +958,15 @@ async function buildOutputs(temporary) {
     }
     caseData.imageWidth = rendered.imageWidth;
     caseData.imageHeight = rendered.imageHeight;
-    outputs.set(join(strokeDirectory, "fixtures", `${caseData.id}.svg`), rendered.svg);
+    outputs.set(
+      join(strokeDirectory, "fixtures", `${caseData.id}.svg`),
+      rendered.svg,
+    );
   }
-  outputs.set(join(strokeDirectory, "cases.typ"), casesTyp(strokeCases, scriptName));
+  outputs.set(
+    join(strokeDirectory, "cases.typ"),
+    casesTyp(strokeCases, scriptName),
+  );
   return outputs;
 }
 
@@ -829,7 +992,9 @@ async function main() {
     if (mismatches.length > 0) {
       throw new Error(`generated fixtures differ:\n${mismatches.join("\n")}`);
     }
-    console.log(check ? "smoothing fixtures are current" : "generated smoothing fixtures");
+    console.log(
+      check ? "smoothing fixtures are current" : "generated smoothing fixtures",
+    );
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }

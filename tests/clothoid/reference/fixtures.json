@@ -1,0 +1,40 @@
+{
+  "sources": {
+    "lisse": {
+      "package": "@lisse/core",
+      "version": "0.7.2",
+      "tarball": "https://registry.npmjs.org/@lisse/core/-/core-0.7.2.tgz",
+      "sha256": "63c26363e5ce92015c70fa38cc161a7a618dc33f879c065967605c5ba02cec37"
+    }
+  },
+  "fixtures": [
+    {
+      "id": "smoothing-0",
+      "width": 120,
+      "height": 80,
+      "radius": 20,
+      "smoothing": 0
+    },
+    {
+      "id": "smoothing-60",
+      "width": 120,
+      "height": 80,
+      "radius": 20,
+      "smoothing": 0.6
+    },
+    {
+      "id": "smoothing-100",
+      "width": 120,
+      "height": 80,
+      "radius": 20,
+      "smoothing": 1
+    },
+    {
+      "id": "small-radius",
+      "width": 80,
+      "height": 60,
+      "radius": 18,
+      "smoothing": 0.6
+    }
+  ]
+}

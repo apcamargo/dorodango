@@ -25,15 +25,14 @@
   } else { false }
 }
 
-// Absolute and ratio components of an inset side value.
+// Split inset into absolute length and ratio.
 #let _split-inset(val) = {
   if type(val) == length { (a: val, r: 0%) } else if (
     type(val) == ratio
   ) { (a: 0pt, r: val) } else { (a: val.length, r: val.ratio) }
 }
 
-// Solves padded = (body + sum-abs) / (1 - sum-ratio) for the padded length,
-// matching how `rect`/`box` auto-size with a ratio inset.
+// Solve padded dimension from body size and insets.
 #let _resolve-auto-dim(body-dim, side-a, side-b) = {
   let sa = _split-inset(side-a)
   let sb = _split-inset(side-b)

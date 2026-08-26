@@ -3,7 +3,7 @@
 // This directory is named with a leading underscore, which Tytanic skips when
 // collecting tests, so it is importable but never run on its own.
 
-#import "/src/lib.typ": squircle
+#import "/src/lib.typ": clothoid, squircle, superellipse
 
 // Every geometry value in `src/` comes out of trigonometry, so an exact `==`
 // would compare accumulated float error. Values that are merely passed through
@@ -33,6 +33,40 @@
 #let assert-point(got, expected, eps: 0.001pt, hint: "") = {
   assert-len(got.at(0), expected.at(0), eps: eps, hint: hint + ".x")
   assert-len(got.at(1), expected.at(1), eps: eps, hint: hint + ".y")
+}
+
+// Independent cubic evaluator for test oracles. Deliberately not imported
+// from `src/corners.typ`, so the tests cannot inherit a production bug.
+#let eval-cubic(c, t) = {
+  let u = 1.0 - t
+  let u3 = u * u * u
+  let u2t = 3.0 * u * u * t
+  let ut2 = 3.0 * u * t * t
+  let t3 = t * t * t
+  let x = (
+    u3 * c.from.at(0) + u2t * c.c1.at(0) + ut2 * c.c2.at(0) + t3 * c.to.at(0)
+  )
+  let y = (
+    u3 * c.from.at(1) + u2t * c.c1.at(1) + ut2 * c.c2.at(1) + t3 * c.to.at(1)
+  )
+  (x, y)
+}
+
+// Signed cross product against the ray from `center` through `ray`, scaled to
+// dimensionless values like production's own splitter uses.
+#let ray-cross(center, ray, point) = {
+  let dx = (ray.at(0) - center.at(0)) / 1pt
+  let dy = (ray.at(1) - center.at(1)) / 1pt
+  let px = (point.at(0) - center.at(0)) / 1pt
+  let py = (point.at(1) - center.at(1)) / 1pt
+  px * dy - py * dx
+}
+
+// Distance between two points, kept in lengths.
+#let point-distance(a, b) = {
+  let dx = (a.at(0) - b.at(0)) / 1pt
+  let dy = (a.at(1) - b.at(1)) / 1pt
+  calc.sqrt(dx * dx + dy * dy) * 1pt
 }
 
 // Compares a dictionary of lengths key by key, so a failure names the key.
@@ -81,17 +115,13 @@
   )
 }
 
-// Asserts that `squircle` and `rect` report the same size through `measure()`.
-//
-// `cases` is a list of `(label, arguments(..), arguments(..))`: the shape
-// arguments, then the region to measure in. Smoothing is deliberately left at
-// its default -- it must not influence layout at all.
-#let measure-parity(cases, eps: 0.02pt) = {
+// Asserts that a shape function and `rect` report the same size through `measure()`.
+#let measure-parity(cases, shape: squircle, eps: 0.02pt) = {
   set page(width: 600pt, height: 600pt, margin: 0pt)
   context {
     for (label, args, region) in cases {
       let a = measure(rect(..args), ..region)
-      let b = measure(squircle(..args), ..region)
+      let b = measure(shape(..args), ..region)
       assert(
         calc.abs(a.width - b.width) <= eps
           and calc.abs(a.height - b.height) <= eps,
@@ -101,7 +131,9 @@
             + repr(a.width)
             + " x "
             + repr(a.height)
-            + ", squircle measured "
+            + ", "
+            + repr(shape)
+            + " measured "
             + repr(b.width)
             + " x "
             + repr(b.height)

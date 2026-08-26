@@ -2,11 +2,17 @@
 
 [![Manual](https://img.shields.io/badge/User_manual-blue)](./docs/manual.pdf) [![GitHub repository](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/apcamargo/dorodango)
 
-`dorodango` is a Typst package for drawing squircles.
+`dorodango` is a Typst package for drawing squircles with tunable corner smoothing.
 
 ## Background
 
-Squircles are rounded rectangles with corners that blend smoothly into their straight edges. Unlike a standard rounded rectangle, which transitions abruptly from a straight edge to a circular arc, a squircle changes curvature gradually around each corner. As a result, a squircle reads as one unified shape, rather than a square that has simply had its corners clipped or rounded off.
+Smooth-cornered rectangles blend their corners gradually into straight edges. Unlike a standard rounded rectangle, which transitions abruptly from a straight edge to a circular arc, these curves approximate profiles with continuous curvature around each corner.
+
+`dorodango` provides three corner curve families:
+
+- `squircle`: the [Figma](https://www.figma.com/blog/desperately-seeking-squircles/) curve family (cubic shoulders into circular arcs).
+- `superellipse`: cubic approximations of Lamé curves parameterized by an exponent.
+- `clothoid`: cubic approximations of Euler-spiral blends with linear curvature ramps.
 
 # Documentation
 
@@ -20,7 +26,7 @@ In a Typst document, import the `dorodango` package:
 #import "@preview/dorodango:0.2.0": *
 ```
 
-`dorodango` provides a `squircle` function that mirrors the built-in `rect` element but adds parameters for controlling corner smoothing. The example below compares a rectangle and a squircle of the same size and corner radius, illustrating how their corner-to-edge transitions differ.
+`dorodango` provides a `squircle` function that mirrors the built-in `rect` element but adds parameters for controlling corner smoothing. The example below compares a rectangle and a squircle with the same size and corner radius to show how their corner-to-edge transitions differ.
 
 ```typ
 #grid(
@@ -130,5 +136,52 @@ On the pill-shaped squircle below, the radius consumes the short vertical edges,
   <img
     src="assets/per-edge-smoothing-comparison-light.svg"
     alt="Two squircles of the same size and corner radius, with radius half the height. The first, with per-edge-smoothing false, has smoothing clamped away on every edge. The second, with per-edge-smoothing true, keeps full smoothing on its long edges while its short, semicircular ends stay unchanged."
+  />
+</picture>
+
+## Alternative corner curve families
+
+Besides `squircle`, `dorodango` provides two additional functions, `superellipse` and `clothoid`, which round corners using different curve families.
+
+```typ
+#grid(
+  columns: (1fr, 1fr, 1fr),
+  gutter: 14pt,
+  row-gutter: 12pt,
+  align: center + top,
+  squircle(
+    width: 85pt,
+    height: 55pt,
+    radius: 20pt,
+    smoothing: 100%,
+    fill: aqua,
+  ),
+  superellipse(
+    width: 85pt,
+    height: 55pt,
+    radius: 20pt,
+    exponent: 5,
+    fill: aqua,
+  ),
+  clothoid(
+    width: 85pt,
+    height: 55pt,
+    radius: 20pt,
+    smoothing: 100%,
+    fill: aqua,
+  ),
+
+  [Squircle], [Superellipse], [Clothoid],
+)
+```
+
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="assets/corner-family-comparison-dark.svg"
+  />
+  <img
+    src="assets/corner-family-comparison-light.svg"
+    alt="Three rectangles of the same size and corner radius, labeled Squircle, Superellipse, and Clothoid. Their corners differ subtly in how the curves meet the straight edges. The squircle blends through Figma-style cubic shoulders, the superellipse follows a Lamé curve profile, and the clothoid ramps curvature linearly along Euler-spiral transitions."
   />
 </picture>

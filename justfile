@@ -39,3 +39,4 @@ compile-asset theme:
     typst compile --root {{root}} --input theme={{theme}} assets/rectangle-vs-squircle.typ assets/rectangle-vs-squircle-{{theme}}.svg
     typst compile --root {{root}} --input theme={{theme}} assets/smoothing-comparison.typ assets/smoothing-comparison-{{theme}}.svg
     typst compile --root {{root}} --input theme={{theme}} assets/per-edge-smoothing-comparison.typ assets/per-edge-smoothing-comparison-{{theme}}.svg
+    typst compile --root {{root}} --input theme={{theme}} assets/corner-family-comparison.typ assets/corner-family-comparison-{{theme}}.svg

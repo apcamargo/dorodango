@@ -1,7 +1,6 @@
 #let _fail(msg) = panic("squircle: " + msg)
 
-// Joins like Typst's own diagnostics: `a, b, and c`. `join` renders two items
-// as `a, and b`, hence the special case.
+// Joins list items with conjunctions, matching Typst formatting.
 #let _oxford(items, conj) = {
   if items.len() == 2 {
     items.at(0) + " " + conj + " " + items.at(1)
@@ -31,10 +30,20 @@
   }
 }
 
+#let _validate-number(name, value) = {
+  _expect(name, value, (int, float), "number")
+  if float.is-nan(value) {
+    _fail(name + ": expected finite number, found NaN")
+  }
+  if float.is-infinite(value) {
+    let sign = if value > 0 { "positive" } else { "negative" }
+    _fail(name + ": expected finite number, found " + sign + " infinity")
+  }
+}
+
 #let _relative-types = (length, ratio, relative)
 
-// Not `_list-types(accepted)`: that spells the union out as "auto, length,
-// ratio, or relative length", where `rect` says "auto or relative length".
+// Format expected size types.
 #let _validate-size(name, value, fraction-ok: false) = {
   let accepted = (type(auto),) + _relative-types
   if fraction-ok { accepted.push(fraction) }
@@ -53,7 +62,7 @@
   "paint or none",
 )
 
-// No `x`/`y` keys here, unlike `_side-keys`. `rect` rejects them too.
+// Supported corner keys.
 #let _corner-keys = (
   "top-left",
   "top-right",
@@ -68,7 +77,7 @@
 
 #let _side-keys = ("left", "top", "right", "bottom", "x", "y", "rest")
 
-// Tells a per-side dictionary from a dictionary of stroke properties.
+// Distinguish per-side dictionary from stroke properties.
 #let _is-side-dict(val) = (
   type(val) == dictionary and _bad-keys(val, _side-keys).len() == 0
 )
@@ -94,8 +103,7 @@
 
 #let _stroke-keys = ("paint", "thickness", "cap", "join", "dash", "miter-limit")
 
-// Ordered so that `_list-types` renders them the way `rect` does. A side also
-// takes `none` (leave unstroked) but not `auto`, having no per-side default.
+// Supported stroke input types.
 #let _stroke-input-types = (length, color, gradient, tiling, dictionary, stroke)
 #let _stroke-side-types = _stroke-input-types + (type(none),)
 
@@ -115,8 +123,7 @@
   if _is-side-dict(value) {
     let out = (:)
     for (key, item) in value {
-      // `auto` is the one input a whole `stroke` takes that a side does not,
-      // so it is rejected here rather than by `_as-stroke`.
+      // Reject auto for individual side strokes.
       if item == auto {
         _fail(
           "stroke."
@@ -138,8 +145,7 @@
     return _as-stroke("stroke", value)
   }
 
-  // Neither kind of dictionary: either a key belongs to no set, or the two
-  // sets were mixed.
+  // Report mixed or invalid dictionary keys.
   let all-keys = _side-keys + _stroke-keys
   let bad = _bad-keys(value, all-keys)
   if bad.len() > 0 {
@@ -150,8 +156,7 @@
 }
 
 #let _validate-body(args) = {
-  // This positional sink also catches misspelt names. Explain `body:`, then
-  // use `rect`'s wording for any other unknown argument.
+  // Validate positional body argument and reject unexpected named arguments.
   let named = args.named()
   if "body" in named {
     _fail(

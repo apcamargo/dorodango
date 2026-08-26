@@ -1,0 +1,47 @@
+{
+  "sources": {
+    "lisse": {
+      "package": "@lisse/core",
+      "version": "0.7.2",
+      "tarball": "https://registry.npmjs.org/@lisse/core/-/core-0.7.2.tgz",
+      "sha256": "63c26363e5ce92015c70fa38cc161a7a618dc33f879c065967605c5ba02cec37"
+    }
+  },
+  "fixtures": [
+    {
+      "id": "exponent-4",
+      "width": 120,
+      "height": 80,
+      "radius": 20,
+      "exponent": 4
+    },
+    {
+      "id": "exponent-5",
+      "width": 120,
+      "height": 80,
+      "radius": 20,
+      "exponent": 5
+    },
+    {
+      "id": "exponent-8",
+      "width": 120,
+      "height": 80,
+      "radius": 20,
+      "exponent": 8
+    },
+    {
+      "id": "exponent-12-cap",
+      "width": 120,
+      "height": 80,
+      "radius": 20,
+      "exponent": 12
+    },
+    {
+      "id": "small-radius",
+      "width": 120,
+      "height": 80,
+      "radius": 10,
+      "exponent": 5
+    }
+  ]
+}

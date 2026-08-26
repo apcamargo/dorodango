@@ -15,7 +15,9 @@
 #let unbounded = arguments()
 #let wide = arguments(width: 300pt)
 
-#measure-parity((
+#import "/src/lib.typ": clothoid, squircle, superellipse
+
+#let cases = (
   // -- Empty shapes ---------------------------------------------------------
   // With no body and no size, both fall back to 45pt x 30pt, capped by the
   // region.
@@ -125,4 +127,9 @@
     arguments(width: 300pt, height: 200pt),
   ),
   ("height 1fr + body", arguments(width: 40pt, height: 1fr, body), wide),
-))
+)
+
+#measure-parity(cases, shape: squircle)
+#measure-parity(cases, shape: superellipse)
+#measure-parity(cases, shape: clothoid)
+

@@ -5,7 +5,7 @@
 /// `squircle`'s panics, which makes `rect` itself the oracle here -- there is
 /// no hand-maintained list of "things that should fail" to go stale.
 
-#import "/src/lib.typ": squircle
+#import "/src/lib.typ": clothoid, squircle, superellipse
 
 #let cases = (
   // -- radius --------------------------------------------------------------
@@ -106,26 +106,31 @@
   ("bogus: 1pt", f => f(bogus: 1pt)),
 )
 
-#for (label, apply) in cases {
-  let rect-err = catch(() => apply(rect))
-  let squircle-err = catch(() => apply(squircle))
-  assert.eq(
-    rect-err == none,
-    squircle-err == none,
-    message: (
-      label
-        + ": rect "
-        + (
-          if rect-err == none { "accepted" } else {
-            "rejected (" + rect-err + ")"
-          }
-        )
-        + ", squircle "
-        + (
-          if squircle-err == none { "accepted" } else {
-            "rejected (" + squircle-err + ")"
-          }
-        )
-    ),
-  )
+#for shape in (squircle, superellipse, clothoid) {
+  for (label, apply) in cases {
+    let rect-err = catch(() => apply(rect))
+    let shape-err = catch(() => apply(shape))
+    assert.eq(
+      rect-err == none,
+      shape-err == none,
+      message: (
+        label
+          + ": rect "
+          + (
+            if rect-err == none { "accepted" } else {
+              "rejected (" + rect-err + ")"
+            }
+          )
+          + ", "
+          + repr(shape)
+          + " "
+          + (
+            if shape-err == none { "accepted" } else {
+              "rejected (" + shape-err + ")"
+            }
+          )
+      ),
+    )
+  }
 }
+

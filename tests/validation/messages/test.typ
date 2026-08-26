@@ -5,7 +5,7 @@
 /// `catch` prefixes panics with "panicked with: ", and every `squircle`
 /// diagnostic then names the package and the offending parameter.
 
-#import "/src/lib.typ": squircle
+#import "/src/lib.typ": clothoid, squircle, superellipse
 
 #let message-of(fn) = catch(fn)
 #let expect(fn, text) = assert.eq(catch(fn), "panicked with: squircle: " + text)
@@ -204,4 +204,52 @@
 #assert.eq(catch(() => squircle(per-edge-smoothing: false)), none)
 #for value in (0, none, auto, "true", (top-left: true)) {
   assert-panic(() => squircle(per-edge-smoothing: value))
+}
+
+// -- Superellipse-specific validation --------------------------------------
+
+#expect(
+  () => superellipse(exponent: "x"),
+  "exponent: expected number, found string",
+)
+#expect(
+  () => superellipse(exponent: auto),
+  "exponent: expected number, found auto",
+)
+#expect(
+  () => superellipse(exponent: 1fr),
+  "exponent: expected number, found fraction",
+)
+#expect(
+  () => superellipse(smoothing: 50%),
+  "unexpected argument: smoothing",
+)
+#expect(
+  () => superellipse(exponent: float.nan),
+  "exponent: expected finite number, found NaN",
+)
+#expect(
+  () => superellipse(exponent: float.inf),
+  "exponent: expected finite number, found positive infinity",
+)
+#expect(
+  () => superellipse(exponent: -float.inf),
+  "exponent: expected finite number, found negative infinity",
+)
+#for value in (2, 5, 8.5, -3, 0, 100) {
+  assert.eq(catch(() => superellipse(exponent: value)), none)
+}
+
+// -- Clothoid-specific validation ------------------------------------------
+
+#expect(
+  () => clothoid(smoothing: "x"),
+  "smoothing: expected relative length, found string",
+)
+#expect(
+  () => clothoid(exponent: 4),
+  "unexpected argument: exponent",
+)
+#for value in (0%, 50%, 100%, 200%, -50%, (top-left: 80%)) {
+  assert.eq(catch(() => clothoid(smoothing: value)), none)
 }

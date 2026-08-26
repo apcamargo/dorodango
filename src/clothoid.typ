@@ -4,27 +4,27 @@
 #import "corners.typ": *
 #import "shape.typ": _draw-shape
 
-/// Draws a rectangle with smoothly rounded corners.
+/// Draws a rectangle with clothoid (Euler-spiral) blend corners.
 ///
-/// Use `squircle` like `rect` when you want softer, more continuous corner
-/// transitions. With `smoothing: 0%`, it has the same geometry as a rounded
-/// `rect`.
+/// Use `clothoid` like `rect` when you want cubic approximations of Euler-spiral
+/// corner transitions, whose ideal curvature ramps linearly along arc length.
+/// At `smoothing: 0%`, it has the same geometry as a rounded `rect`.
 ///
 /// -> content
-#let squircle(
-  /// The squircle's width, relative to its parent container.
+#let clothoid(
+  /// The clothoid's width, relative to its parent container.
   /// -> auto | length | ratio | relative
   width: auto,
-  /// The squircle's height, relative to its parent container.
+  /// The clothoid's height, relative to its parent container.
   /// -> auto | length | ratio | relative | fraction
   height: auto,
-  /// How to fill the squircle.
+  /// How to fill the clothoid.
   ///
-  /// When setting a fill, the default stroke disappears. To create a squircle
-  /// with both fill and stroke, you have to configure both.
+  /// When setting a fill, the default stroke disappears. To create a
+  /// clothoid with both fill and stroke, you have to configure both.
   /// -> none | color | gradient | tiling
   fill: none,
-  /// How to stroke the squircle. This can be:
+  /// How to stroke the clothoid. This can be:
   ///
   /// - `none` to disable stroking.
   /// - `auto` for a stroke of `1pt + black` if and only if no fill is given.
@@ -43,8 +43,8 @@
   /// All keys are optional. Omitted sides are not stroked.
   /// -> auto | none | length | color | gradient | tiling | stroke | dictionary
   stroke: auto,
-  /// How much to round the squircle's corners, relative to the minimum of the
-  /// width and height divided by two. This can be:
+  /// How much to round the clothoid's corners, relative to the minimum of
+  /// the width and height divided by two. This can be:
   ///
   /// - A relative length for a uniform corner radius.
   /// - A dictionary describing the radius for each corner individually. The
@@ -61,17 +61,17 @@
   ///     dictionary explicitly sets a radius.
   /// -> length | ratio | relative | dictionary
   radius: 0pt,
-  /// How much to pad the squircle's content. See `box`'s `inset` parameter for
-  /// more details.
+  /// How much to pad the clothoid's content. See `box`'s `inset`
+  /// parameter for more details.
   /// -> length | ratio | relative | dictionary
   inset: 5pt,
-  /// How much to expand the squircle's size without affecting the layout. See
-  /// `box`'s `outset` parameter for more details.
+  /// How much to expand the clothoid's size without affecting the layout.
+  /// See `box`'s `outset` parameter for more details.
   /// -> length | ratio | relative | dictionary
   outset: 0pt,
-  /// How strongly to smooth the squircle's corners. Smoothing replaces the
-  /// ends of each circular corner arc with Bézier transitions whose curvature
-  /// gradually changes between the straight edges and the arc. This can be:
+  /// How strongly to smooth the clothoid's corners. Smoothing splits the
+  /// 90-degree corner rotation into clothoid spiral transitions (where curvature
+  /// ramps linearly) and a central circular arc. This can be:
   ///
   /// - A relative length for uniform corner smoothing.
   /// - A dictionary describing the smoothing for each corner individually. The
@@ -88,35 +88,17 @@
   ///     dictionary explicitly sets smoothing.
   ///
   /// At `0%`, the corner is a quarter circle matching a rounded `rect`. At
-  /// `100%`, it is two Bézier transitions with no circular arc.
+  /// `100%`, it is two clothoid transitions meeting with no circular arc.
   ///
-  /// A corner's two edges normally share one available space, the smaller of
-  /// the two. See `per-edge-smoothing` to change that.
+  /// When the natural blend does not fit the tighter adjacent-edge budget, its
+  /// clothoid lengths and effective circular radius scale down together. This
+  /// keeps the angular smoothing proportions unchanged.
   /// -> length | ratio | relative | dictionary
   smoothing: 60%,
-  /// Whether to preserve the requested smoothing when it exceeds a corner's
-  /// available space. This has no effect when the smoothing already fits.
-  ///
-  /// If `false`, smoothing is reduced to fit, so further increases may not
-  /// change the corner. If `true`, its arc and smoothing angles are retained by
-  /// compressing the Bézier transition, which can make the corner look
-  /// compressed.
-  /// -> bool
-  preserve-smoothing: false,
-  /// Whether each half of a corner can use all the space available on its edge
-  /// when the requested smoothing exceeds the space available along one or
-  /// both edges.
-  ///
-  /// If `false`, each corner's two transition angles stay symmetric, so if one
-  /// edge has less room for smoothing, the other half is clamped to that limit
-  /// and is less smoothed than it could be. If `true`, the two halves can be
-  /// smoothed independently.
-  /// -> bool
-  per-edge-smoothing: false,
-  /// The content to place into the squircle. Strings and symbols are converted
+  /// The content to place into the clothoid. Strings and symbols are converted
   /// to content.
   ///
-  /// When this is omitted, the squircle takes on a default size of at most
+  /// When this is omitted, the clothoid takes on a default size of at most
   /// `45pt` by `30pt`.
   /// -> none | content | str | symbol
   ..body,
@@ -129,8 +111,6 @@
   _validate-relative-or-dict("inset", inset, _side-keys)
   _validate-relative-or-dict("outset", outset, _side-keys)
   _validate-relative-or-dict("smoothing", smoothing, _corner-keys)
-  _expect("preserve-smoothing", preserve-smoothing, (bool,), "boolean")
-  _expect("per-edge-smoothing", per-edge-smoothing, (bool,), "boolean")
   body = _validate-body(body)
 
   let smoothing-corners = _resolve-corners(smoothing, default: 60%)
@@ -145,22 +125,13 @@
     .to-dict()
 
   let _piece-for(corner, pt, r, r-fit, budget, split) = {
-    _piece(
+    _clothoid-piece(
       corner,
       pt,
       r,
-      _corner-params(
-        r-fit,
-        smoothings.at(corner),
-        budget.ccw,
-        preserve-smoothing,
-      ),
-      _corner-params(
-        r-fit,
-        smoothings.at(corner),
-        budget.cw,
-        preserve-smoothing,
-      ),
+      r-fit,
+      budget,
+      smoothings.at(corner),
       split: split,
     )
   }
@@ -173,7 +144,6 @@
     radius: radius,
     inset: inset,
     outset: outset,
-    per-edge-smoothing: per-edge-smoothing,
     _piece-for,
     body: body,
   )

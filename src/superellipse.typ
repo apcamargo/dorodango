@@ -71,7 +71,7 @@
   /// See `box`'s `outset` parameter for more details.
   /// -> length | ratio | relative | dictionary
   outset: 0pt,
-  /// The Lamé curve exponent $n$ in $|x/a|^n + |y/b|^n = 1$.
+  /// The Lamé curve exponent $n$ in $|x/p|^n + |y/p|^n = 1$.
   ///
   /// Controls the corner shape profile. Values must be finite and are clamped
   /// into $[2, 12]$. Below 2 the curve would bulge inward, while above 12

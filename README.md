@@ -8,13 +8,13 @@
 
 ## Background
 
-Smooth-cornered rectangles blend their corners gradually into straight edges. Unlike a standard rounded rectangle, which transitions abruptly from a straight edge to a circular arc, these curves approximate profiles with continuous curvature around each corner.
+Smooth-cornered rectangles blend their corners gradually into straight edges. While a standard rounded rectangle jumps abruptly from a straight edge into a circular arc, smooth corners ease into the curve with zero starting curvature.
 
-`dorodango` provides three corner curve families:
+`dorodango` provides three corner families:
 
-- `squircle`: the [Figma](https://www.figma.com/blog/desperately-seeking-squircles/) curve family (cubic shoulders into circular arcs).
-- `superellipse`: cubic approximations of Lamé curves parameterized by an exponent.
-- `clothoid`: cubic approximations of Euler-spiral blends with linear curvature ramps.
+- `squircle`: [Figma's](https://www.figma.com/blog/desperately-seeking-squircles/) squircle construction, combining a circular arc with cubic Bézier shoulders at either end.
+- `superellipse`: cubic approximations of Lamé curves parameterized by an exponent, from a standard circular arc at 2 to squarer corners with continuous curvature.
+- `clothoid`: cubic approximations of Euler-spiral blends where curvature ramps linearly along the curve.
 
 # Documentation
 
@@ -28,7 +28,7 @@ In a Typst document, import the `dorodango` package:
 #import "@preview/dorodango:0.2.0": *
 ```
 
-`dorodango` provides a `squircle` function that mirrors the built-in `rect` element but adds parameters for controlling corner smoothing. The example below compares a rectangle and a squircle with the same size and corner radius to show how their corner-to-edge transitions differ.
+`dorodango` provides a `squircle` function that mirrors Typst's built-in `rect` element, adding parameters to control corner smoothing. The comparison below shows how the corner-to-edge transitions differ for a rectangle and a squircle of the same size and radius:
 
 ```typ
 #grid(
@@ -58,13 +58,13 @@ In a Typst document, import the `dorodango` package:
 
 ## Customize squircle corners
 
-Three parameters control the appearance of a squircle's corners:
+Three parameters control how squircle corners are drawn:
 
-- `smoothing` controls how gradually a straight edge blends into its rounded corner. At `0%`, the shape is an ordinary rounded rectangle. Higher values make the transition more gradual, and at `100%` the circular arc has zero length and the two Bézier transitions meet at a single point.
-- `preserve-smoothing` determines how the corner adapts when its requested radius and smoothing do not both fit.
-- `per-edge-smoothing` lets each edge of a corner use its own available space instead of limiting both to the tighter edge.
+- `smoothing` controls how gradually edges blend into corners. At `0%`, the shape is an ordinary rounded rectangle. At `100%`, the central circular arc disappears entirely and the two Bézier shoulders meet.
+- `preserve-smoothing` determines how the corner adapts when the requested radius and smoothing exceed available edge space.
+- `per-edge-smoothing` lets each edge of a corner use its own available space instead of constraining both to the shorter edge.
 
-The shapes below share the same size and radius. The final shape preserves its requested smoothing after it no longer fits.
+In the example below, all three shapes share the same size and radius. The third preserves its requested smoothing even when edge space runs out:
 
 ```typ
 #grid(
@@ -106,7 +106,7 @@ The shapes below share the same size and radius. The final shape preserves its r
   />
 </picture>
 
-On the pill-shaped squircle below, the radius consumes the short vertical edges, leaving them no room for smoothing, while the long horizontal edges still have space. By default, each corner's two transition angles stay symmetric, so the horizontal half is clamped to the vertical half's limit and is less smoothed than it could be. Setting `per-edge-smoothing` to `true` lets each half use all the space available on its edge, so the two halves can smooth independently.
+On the pill shape below, the corner radius consumes the entire vertical edge, leaving no room for smoothing. By default, corners stay symmetric, so horizontal smoothing is clamped to match the vertical limit. Setting `per-edge-smoothing: true` allows the horizontal edges to use their remaining length and smooth independently:
 
 ```typ
 #grid(
@@ -143,7 +143,9 @@ On the pill-shaped squircle below, the radius consumes the short vertical edges,
 
 ## Alternative corner curve families
 
-Besides `squircle`, `dorodango` provides two additional functions, `superellipse` and `clothoid`, which round corners using different curve families.
+Besides `squircle`, `dorodango` also provides `superellipse` and `clothoid` to round corners using different curve families.
+
+Note that each family is governed by different parameters, so the comparison below is not like-for-like. While `squircle` and `clothoid` corner blends can extend along adjacent edges as space allows, `superellipse` corners always stay strictly within their radius.
 
 ```typ
 #grid(
@@ -173,7 +175,9 @@ Besides `squircle`, `dorodango` provides two additional functions, `superellipse
     fill: aqua,
   ),
 
-  [Squircle], [Superellipse], [Clothoid],
+  [Squircle \ smoothing: 100%],
+  [Superellipse \ exponent: 5],
+  [Clothoid \ smoothing: 100%],
 )
 ```
 
@@ -184,6 +188,6 @@ Besides `squircle`, `dorodango` provides two additional functions, `superellipse
   />
   <img
     src="assets/corner-family-comparison-light.svg"
-    alt="Three rectangles of the same size and corner radius, labeled Squircle, Superellipse, and Clothoid. Their corners differ subtly in how the curves meet the straight edges. The squircle blends through Figma-style cubic shoulders, the superellipse follows a Lamé curve profile, and the clothoid ramps curvature linearly along Euler-spiral transitions."
+    alt="Three rectangles of the same size and corner radius, labeled with their curve family and the parameter used: Squircle at smoothing 100%, Superellipse at exponent 5, and Clothoid at smoothing 100%. The squircle blends through Figma-style cubic shoulders, the superellipse follows a Lamé curve profile, and the clothoid ramps curvature linearly along Euler-spiral transitions. The squircle and clothoid corners spread further along the edges than the superellipse corner, which stays within its radius."
   />
 </picture>

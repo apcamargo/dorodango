@@ -1,7 +1,7 @@
 #import "@preview/tidy:0.4.3"
 #import "../src/lib.typ": clothoid, squircle, superellipse
 
-#let light-gray = oklch(93%, 0.005, 265deg)
+#let light-gray = oklch(93.5%, 0.005, 265deg)
 #let medium-gray = oklch(60%, 0.005, 265deg)
 
 #set document(title: "dorodango manual")
@@ -107,19 +107,15 @@
 
 = Introduction
 
-`dorodango` provides three functions for drawing rectangles with smoothly rounded corners:
-
-- `squircle`: the [Figma curve family](https://www.figma.com/blog/desperately-seeking-squircles/), transitioning from straight edges into circular arcs via two cubic Bézier shoulders.
-- `superellipse`: cubic approximations of Lamé curve ($|x/a|^n + |y/b|^n = 1$) corners, parameterized by an exponent $n$. For $n > 2$, the ideal curve meets straight edges with zero curvature.
-- `clothoid`: cubic approximations of Euler-spiral blend corners, whose ideal curvature ramps linearly along arc length from zero to $1/r$ into a central arc.
+`dorodango` provides three functions (`squircle`, `superellipse`, and `clothoid`) that mirror the built-in `rect` element, replacing abrupt circular corners with smooth curve transitions.
 
 #align(center)[
   #grid(
     columns: 4,
     rows: 2,
     align: center,
-    row-gutter: 7pt,
-    column-gutter: 15pt,
+    row-gutter: 6.5pt,
+    column-gutter: 22pt,
     rect(
       width: 80pt,
       height: 55pt,
@@ -155,7 +151,9 @@
   )
 ]
 
-= API reference
+Note that each family is driven by different parameters (see the #link(<api>)[API reference]), so the comparison above is not like-for-like. While `squircle` and `clothoid` corner blends can extend along adjacent edges as space allows, `superellipse` corners always stay strictly within their radius.
+
+= API reference <api>
 
 // squircle
 
@@ -191,6 +189,8 @@
 
 == Squircle
 
+`squircle` draws #link("https://www.figma.com/blog/desperately-seeking-squircles/")[Figma's] squircle corner, a circular arc with a cubic Bézier shoulder at either end. `smoothing` splits the corner's 90° turn between the shoulders and the arc, so at `0%` the corner is a plain quarter circle and at `100%` the arc vanishes and the two shoulders meet. `preserve-smoothing` and `per-edge-smoothing`, both specific to `squircle`, control what happens when the requested corner does not fit.
+
 === Smoothing
 
 `smoothing` controls the gradual transition between edges and corners. In the example below, the shapes use `0%`, `60%`, and `100%` smoothing.
@@ -213,12 +213,10 @@
 
 === Preserve smoothing
 
-Large radii and high smoothing both consume space along a corner's two edges. When they require more space than is available, `preserve-smoothing` controls whether smoothing is reduced to fit or retained by compressing the Bézier transitions.
+Large radii and high smoothing both consume space along a corner's edges. For a corner with radius $r$ and smoothing $s$, the required space along each edge is $p = (1 + s) r$. When $p$ exceeds the available edge budget $b$, `preserve-smoothing` determines how the shape adjusts:
 
-- `preserve-smoothing: false` keeps the requested radius within the limits of the shape and lowers smoothing until the corner fits.
-- `preserve-smoothing: true` keeps both the requested radius and smoothing, shortening the Bézier transitions between the straight edges and the arc to make the corner fit.
-
-Each corner has available space along each of its two edges, determined by the edge length and the radii of the corners at either end. With radius $r$ and smoothing $s$, a corner needs $p = (1 + s) r$ along each edge. If $p$ exceeds the available space $b$, `preserve-smoothing: false` reduces smoothing to $b / r - 1$ while keeping the radius within the limits of the shape. With `preserve-smoothing: true`, the radius and requested smoothing are kept, and the Bézier transitions are shortened to fit.
+- `preserve-smoothing: false` (default) preserves the radius and reduces smoothing to $b / r - 1$.
+- `preserve-smoothing: true` keeps both the requested radius and smoothing, compressing the Bézier transitions to fit the edge.
 
 ```example
 #grid(
@@ -239,12 +237,12 @@ Each corner has available space along each of its two edges, determined by the e
 
 === Per-edge smoothing
 
-Each half of a corner uses space along one of its two edges. The edges can have different amounts of available space. For example, on an elongated shape, the short edge may not accommodate the requested smoothing while the long edge still can. `per-edge-smoothing` controls whether the two halves share the tighter limit or use their available space independently.
+Each half of a corner uses space along one adjacent edge, and those edges may have different lengths. For example, on an elongated rectangle, a short edge might run out of space for smoothing while the long edge still has plenty of room.
 
-- `per-edge-smoothing: false` uses the smaller of the two edge budgets for both halves, keeping the corner symmetric. If one edge has less room for smoothing, the other half is also limited to it and is less smoothed than it could be.
-- `per-edge-smoothing: true` determines the response to limited space independently for each half.
+- `per-edge-smoothing: false` (default) uses the tighter edge budget for both halves, keeping the corner symmetric.
+- `per-edge-smoothing: true` allows each half to adapt to its own edge budget independently.
 
-When `preserve-smoothing` is `false`, smoothing is reduced only for corner halves that do not have enough space for the requested smoothing. Because the two halves can have different amounts of space available, their smoothing may be reduced by different amounts, resulting in different transition angles. When `preserve-smoothing` is `true`, both halves retain the requested smoothing and transition angles. Any half without enough space instead has its Bézier transition compressed to fit.
+When `preserve-smoothing` is `false`, smoothing is reduced only on the tighter edge, giving the two halves different transition angles. When `preserve-smoothing` is `true`, both halves retain their transition angles, but the transition on the tighter edge is compressed to fit.
 
 ```example
 #grid(
@@ -265,9 +263,11 @@ When `preserve-smoothing` is `false`, smoothing is reduced only for corner halve
 
 == Superellipse
 
+`superellipse` draws corners based on Lamé curves ($|x/p|^n + |y/p|^n = 1$), fitted with three cubic Bézier segments inside a square corner footprint of side $p$. For $n > 2$, the curve meets straight edges with zero curvature.
+
 === Exponent
 
-The `exponent` parameter on `superellipse` controls how sharp or square the corner profile is. It must be finite and is clamped into $[2, 12]$. At $n = 2$, the curve is a circle, drawing the same circular arc as `rect` rather than an approximation. Near the upper bound the cubic fit trades fidelity for staying inside the corner's footprint.
+The `exponent` parameter sets $n$, clamped to $[2, 12]$. At $n = 2$, the corner is an exact circular arc matching `rect`. Higher values make the corner squarer. Near $n = 12$, the cubic fit trades exact curve fidelity to stay strictly within the corner footprint.
 
 ```example
 #grid(
@@ -287,11 +287,13 @@ The `exponent` parameter on `superellipse` controls how sharp or square the corn
 
 == Clothoid
 
+`clothoid` draws Euler-spiral corner blends, ramping curvature linearly from zero at the straight edge up to the curvature of a central circular arc. Each spiral transition is approximated by a single cubic Bézier segment.
+
 === Smoothing
 
-The `clothoid` function approximates Euler spirals to transition into rounded corners. Its ideal profile ramps curvature continuously across every seam.
+`smoothing` splits the 90° corner turn between the spiral transitions and the central circular arc. At `0%`, the corner is a standard circular arc matching `rect`. At `100%`, the central arc vanishes and the two spirals meet directly.
 
-For positive smoothing, the natural blend can require more space than the tighter adjacent-edge budget allows. In that case, `clothoid` uniformly scales the clothoid lengths and effective circular radius to fit while preserving its angular smoothing proportions. This happens after ordinary radius clamping. At `0%`, the function follows rounded-rectangle geometry instead.
+When a blend requires more space than the adjacent edge allows, `clothoid` uniformly scales down both the spiral lengths and circular radius, keeping the angular smoothing proportions intact.
 
 ```example
 #grid(
@@ -311,9 +313,11 @@ For positive smoothing, the natural blend can require more space than the tighte
 
 == Common parameters
 
+Although `squircle`, `superellipse`, and `clothoid` take different parameters to shape their corners, they share the common ones described below:
+
 === Size and body
 
-`width` and `height` set the squircle's layout size. When both are `auto`, the squircle takes its size from the positional body passed in square brackets, as the first shape below illustrates, while the second uses fixed dimensions.
+`width` and `height` set the shape's layout dimensions. When both are `auto`, the shape sizes itself to fit the content passed in the body.
 
 ```example
 #grid(
@@ -331,7 +335,7 @@ For positive smoothing, the natural blend can require more space than the tighte
 
 === Fill
 
-`fill` sets the squircle's interior paint. In the example below, the first shape uses a solid color and the second uses a linear gradient.
+`fill` sets the interior color, gradient, or tiling pattern.
 
 ```example
 #grid(
@@ -344,7 +348,7 @@ For positive smoothing, the natural blend can require more space than the tighte
 
 === Stroke
 
-`stroke` draws the outline. In the example below, the first shape uses one stroke on every edge, while the second assigns each edge its own stroke.
+`stroke` sets the border outline, either uniformly or per side.
 
 ```example
 #grid(
@@ -367,7 +371,7 @@ For positive smoothing, the natural blend can require more space than the tighte
 
 === Radius
 
-`radius` controls corner rounding. In the example below, the shapes show square corners, one shared radius, and a smaller top-left radius with a shared value for the remaining corners.
+`radius` controls corner rounding, either as a single value for all corners or per corner.
 
 ```example
 #grid(
@@ -396,7 +400,7 @@ For positive smoothing, the natural blend can require more space than the tighte
 
 === Inset and outset
 
-`inset` pads the body, while `outset` expands the drawing without changing layout. In the example below, the first shape has neither, the second uses an inset, and the third uses an outset.
+`inset` adds internal padding around the content, while `outset` extends the background drawing outward without affecting layout dimensions.
 
 ```example
 #grid(
@@ -419,7 +423,7 @@ For positive smoothing, the natural blend can require more space than the tighte
     width: 90pt,
     height: 48pt,
     radius: 10pt,
-    outset: 8pt,
+    outset: 7pt,
     fill: aqua,
   )[Outset expands the drawing],
 )

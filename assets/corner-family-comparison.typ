@@ -40,6 +40,8 @@
       fill: aqua,
     ),
 
-    [Squircle], [Superellipse], [Clothoid],
+    [Squircle \ smoothing: 100%],
+    [Superellipse \ exponent: 5],
+    [Clothoid \ smoothing: 100%],
   )
 ]

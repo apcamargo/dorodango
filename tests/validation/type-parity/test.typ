@@ -1,14 +1,13 @@
-/// `squircle` must accept and reject exactly what `rect` accepts and rejects.
+/// The exported shapes must accept and reject the same shared argument forms
+/// as `rect`.
 ///
-/// Each case is written *once* and applied to both functions, so the two sides
-/// cannot drift apart. `catch` picks up Typst's own argument errors as well as
-/// `squircle`'s panics, which makes `rect` itself the oracle here -- there is
-/// no hand-maintained list of "things that should fail" to go stale.
+/// Each case is written once and applied to both functions. The expected result
+/// is recorded separately, so a shared mistake cannot pass as parity. `catch`
+/// picks up Typst argument errors and package panics alike.
 
 #import "/src/lib.typ": clothoid, squircle, superellipse
 
 #let cases = (
-  // -- radius --------------------------------------------------------------
   ("radius: 0pt", f => f(radius: 0pt)),
   ("radius: 10pt", f => f(radius: 10pt)),
   ("radius: -5pt", f => f(radius: -5pt)),
@@ -31,7 +30,6 @@
   ("radius: (top: \"x\")", f => f(radius: (top: "x"))),
   ("radius: (top: auto)", f => f(radius: (top: auto))),
 
-  // -- inset / outset ------------------------------------------------------
   ("inset: 3", f => f(inset: 3)),
   ("inset: auto", f => f(inset: auto)),
   ("inset: none", f => f(inset: none)),
@@ -47,7 +45,6 @@
   ("outset: (top: 1fr)", f => f(outset: (top: 1fr))),
   ("outset: -5pt", f => f(outset: -5pt)),
 
-  // -- width / height ------------------------------------------------------
   ("width: 80pt", f => f(width: 80pt)),
   ("width: -20pt", f => f(width: -20pt)),
   ("width: 50% + 10pt", f => f(width: 50% + 10pt)),
@@ -61,14 +58,12 @@
   ("height: none", f => f(height: none)),
   ("height: 50% + 10pt", f => f(height: 50% + 10pt)),
 
-  // -- fill ----------------------------------------------------------------
   ("fill: none", f => f(fill: none)),
   ("fill: red", f => f(fill: red)),
   ("fill: gradient", f => f(fill: gradient.linear(red, blue))),
   ("fill: 3", f => f(fill: 3)),
   ("fill: auto", f => f(fill: auto)),
 
-  // -- stroke --------------------------------------------------------------
   ("stroke: auto", f => f(stroke: auto)),
   ("stroke: none", f => f(stroke: none)),
   ("stroke: 3", f => f(stroke: 3)),
@@ -94,7 +89,6 @@
   // `auto` is meaningful for the whole stroke but not for a single side.
   ("stroke: (top: auto)", f => f(stroke: (top: auto))),
 
-  // -- body ----------------------------------------------------------------
   ("body: content", f => f[hello]),
   ("body: none", f => f(none)),
   ("body: str", f => f("hello")),
@@ -102,33 +96,109 @@
   ("body: two positional", f => f([a], [b])),
   ("body: named", f => f(body: [a])),
 
-  // -- unknown parameters --------------------------------------------------
   ("bogus: 1pt", f => f(bogus: 1pt)),
+)
+
+// A parity-only assertion can pass when both implementations make the same
+// mistake. Keep the expected acceptance result independent from either one,
+// then verify `rect` and every exported shape against it.
+#let expected-acceptance = (
+  "radius: 0pt": true,
+  "radius: 10pt": true,
+  "radius: -5pt": true,
+  "radius: 30%": true,
+  "radius: 30% + 5pt": true,
+  "radius: auto": false,
+  "radius: none": false,
+  "radius: \"x\"": false,
+  "radius: 3": false,
+  "radius: 1fr": false,
+  "radius: (:)": true,
+  "radius: (rest: 5pt)": true,
+  "radius: (top-left: 5pt)": true,
+  "radius: (top: 20pt, left: 5pt)": true,
+  "radius: (x: 3pt)": false,
+  "radius: (y: 3pt)": false,
+  "radius: (topleft: 5pt)": false,
+  "radius: (top: \"x\")": false,
+  "radius: (top: auto)": false,
+  "inset: 3": false,
+  "inset: auto": false,
+  "inset: none": false,
+  "inset: (:)": true,
+  "inset: (foo: 5pt)": false,
+  "inset: (x: \"x\")": false,
+  "inset: (x: 20pt, y: 2pt)": true,
+  "inset: 25% + 5pt": true,
+  "outset: auto": false,
+  "outset: none": false,
+  "outset: (:)": true,
+  "outset: (bar: 1pt)": false,
+  "outset: (top: 1fr)": false,
+  "outset: -5pt": true,
+  "width: 80pt": true,
+  "width: -20pt": true,
+  "width: 50% + 10pt": true,
+  "width: auto": true,
+  "width: \"x\"": false,
+  "width: none": false,
+  "width: 1fr": false,
+  "height: 1fr": true,
+  "height: 3fr": true,
+  "height: none": false,
+  "height: 50% + 10pt": true,
+  "fill: none": true,
+  "fill: red": true,
+  "fill: gradient": true,
+  "fill: 3": false,
+  "fill: auto": false,
+  "stroke: auto": true,
+  "stroke: none": true,
+  "stroke: 3": false,
+  "stroke: 3pt": true,
+  "stroke: red": true,
+  "stroke: 2pt + red": true,
+  "stroke: (:)": true,
+  "stroke: (top: red)": true,
+  "stroke: (x: red, y: blue)": true,
+  "stroke: (top: none)": true,
+  "stroke: (paint: red, thickness: 2pt)": true,
+  "stroke: (paint: red, bogus: 2pt)": false,
+  "stroke: (top: red, paint: blue)": false,
+  "stroke: (top: auto)": false,
+  "body: content": true,
+  "body: none": true,
+  "body: str": true,
+  "body: 3": false,
+  "body: two positional": false,
+  "body: named": false,
+  "bogus: 1pt": false,
 )
 
 #for shape in (squircle, superellipse, clothoid) {
   for (label, apply) in cases {
+    let expected = expected-acceptance.at(label)
     let rect-err = catch(() => apply(rect))
     let shape-err = catch(() => apply(shape))
+    let rect-ok = rect-err == none
+    let shape-ok = shape-err == none
     assert.eq(
-      rect-err == none,
-      shape-err == none,
+      rect-ok,
+      expected,
+      message: label
+        + ": rect acceptance no longer matches the documented contract",
+    )
+    assert.eq(
+      shape-ok,
+      expected,
       message: (
         label
-          + ": rect "
-          + (
-            if rect-err == none { "accepted" } else {
-              "rejected (" + rect-err + ")"
-            }
-          )
-          + ", "
+          + ": "
           + repr(shape)
           + " "
-          + (
-            if shape-err == none { "accepted" } else {
-              "rejected (" + shape-err + ")"
-            }
-          )
+          + (if shape-ok { "accepted" } else { "rejected" })
+          + " an input that should be "
+          + (if expected { "accepted" } else { "rejected" })
       ),
     )
   }

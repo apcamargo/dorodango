@@ -1,23 +1,11 @@
-/// Superellipse unit tests:
-/// 1. Mathematical parity against the Lamé curve equation: |x/a|^n + |y/b|^n = 1.
-/// 2. Clamping behavior: negative and small exponents clamp to n = 2.
-/// 3. Corner tangency pinning: start/end points land exactly on the edges at distance p.
-/// 4. Cut outlines honor the requested radial split rather than a sample boundary.
+/// Check the Lame equation, exponent limits, edge endpoints, and radial cuts.
 
 #import "/src/corners.typ": _corner-geom, _superellipse-piece
 #import "/tests/_helpers/helpers.typ": (
   assert-len, assert-point, eval-cubic, point-distance, ray-cross,
 )
 
-// Evaluate cubic Bézier at parameter t in [0, 1]
-
-// 1. Check Lamé parity for top-right corner on a square
-// For top-right corner at vertex (w, 0):
-// pt = (w, 0), edge-in = (-1, 0), edge-out = (0, 1)
-// start is (w - p, 0), end is (w, p).
-// For any point (x, y) on the curve, the inward depths are:
-// u = (p - (w - x)) / p, v = (p - y) / p
-// and u^n + v^n should approximate 1.
+// Check the Lame equation on the top-right corner of a square.
 #let w = 240pt
 #let r = 72pt
 #let pt = (w, 0pt)
@@ -26,7 +14,7 @@
 #for (n, tol) in (
   // Measured maxima of the current three-cubic midpoint-matched fit at this
   // sampling density, with headroom for float noise. The sweep starts at 3:
-  // exponent 2 is `rect`'s own circular arc, pinned by the κ-cubic test below.
+  // Exponent 2 uses the circular arc checked below.
   (3, 0.005),
   (4, 0.01),
   (5, 0.015),
@@ -37,7 +25,6 @@
 ) {
   let piece = _superellipse-piece("top-right", pt, r, r, budget, n)
 
-  // Sample along each of the 3 cubic segments
   for seg in piece.full {
     for step in range(1, 10) {
       let t = step / 10.0
@@ -49,7 +36,7 @@
         calc.abs(f - 1.0) <= tol,
         message: "superellipse n="
           + str(n)
-          + " Lamé error: "
+          + " Lame error: "
           + str(calc.abs(f - 1.0))
           + " > "
           + str(tol),
@@ -58,7 +45,7 @@
   }
 }
 
-// 2. n = -10 and n = 1 must clamp to n = 2 (identical output to n = 2)
+// Exponents below 2 clamp to 2.
 #let p2 = _superellipse-piece("top-right", pt, r, r, budget, 2)
 #let p-neg = _superellipse-piece("top-right", pt, r, r, budget, -10)
 #let p1 = _superellipse-piece("top-right", pt, r, r, budget, 1)
@@ -77,13 +64,11 @@
   assert-point(s2.to, s1.to)
 }
 
-// 3. Tangency pinning: start is exactly (w - r, 0), end is exactly (w, r)
+// The curve endpoints stay on the two edges.
 #assert-point(p2.start, (w - r, 0pt))
 #assert-point(p2.end, (w, r))
 
-// 4. `shape.typ` supplies a point on the radial cut that should separate two
-// adjacent pens. Different rays must therefore produce different points on
-// this corner, and each returned seam must remain on its requested ray.
+// Radial cuts must return different seams on their requested rays.
 #let center = (w - r, r)
 #let split-a = (w - 7 * r / 8, r / 8)
 #let split-b = (w - r / 8, 7 * r / 8)
@@ -135,8 +120,7 @@
   message: "different split rays must not share a seam",
 )
 
-// The canonical geometry is reflected into all four corners. A ray splitter
-// must preserve that reflection rather than working only at top-right.
+// Check radial cuts in all four corner orientations.
 #let h = 160pt
 #let split-corners = (
   ("top-left", (0pt, 0pt)),
@@ -169,11 +153,7 @@
   )
 }
 
-// 5. Tight budgets compress the fitted footprint below the radius. The splitter
-//    must define seams from the fitted footprint so requested rays still meet
-//    the chain instead of falling back to an endpoint. Here p = min(r-fit,
-//    budget) is exactly the budget, which makes the fitted ray origin known
-//    from the documented contract alone.
+// Tight budgets move the fitted footprint, and radial cuts must follow it.
 #let tight-budget = (cw: 30pt, ccw: 30pt)
 #let tight-len = tight-budget.cw
 #for (corner, at) in split-corners {
@@ -204,8 +184,7 @@
     split: ray-b,
   )
   for (tag, cut, ray) in (("a", cut-a, ray-a), ("b", cut-b, ray-b)) {
-    // Compression saturates at the budget: the footprint endpoints sit
-    // `tight-len` along each edge.
+    // The fitted endpoints sit at the budget limit.
     assert-point(
       cut.start,
       corner-split(at, geom, tight-len, 0pt),
@@ -238,9 +217,7 @@
   )
 }
 
-// 6. A positive radius that loses all straight-edge budget collapses onto the
-//    corner point instead of producing a chamfered sharp record whose
-//    endpoints are pulled `r` along both edges.
+// With no edge budget, a positive radius collapses to the corner.
 #let collapsed = _superellipse-piece(
   "top-right",
   pt,
@@ -254,8 +231,8 @@
 #assert-point(collapsed.mid, pt)
 #assert-point(collapsed.end, pt)
 
-// 7. Finite exponents clamp into [2, 12]: values past the cap produce output
-//    identical to the cap itself.
+// Exponents above 12 clamp to 12.
+
 #let p-cap = _superellipse-piece("top-right", pt, r, r, budget, 12)
 #for n in (12.6, 13, 40, 1000) {
   let p-over = _superellipse-piece("top-right", pt, r, r, budget, n)
@@ -268,13 +245,7 @@
   }
 }
 
-// 8. At exponent 2 the Lamé curve is a circle, which is the corner `rect`
-//    itself draws: one cubic per quadrant with the classic handle length
-//    κ = 4/3·tan(22.5°), not the three-cubic fit the higher exponents use.
-//    The control points below are that textbook construction written out, so
-//    the assertion does not lean on any production helper. Filtering the
-//    zero-length cubics keeps the test on the drawn arc rather than on how
-//    many degenerate segments the construction happens to carry.
+// At exponent 2, check the standard cubic approximation of a quarter circle.
 #let kappa = 4.0 / 3.0 * calc.tan(22.5deg)
 #let circle-corner = _superellipse-piece("top-right", pt, r, r, budget, 2)
 #let drawn = circle-corner.full.filter(seg => (
@@ -287,12 +258,9 @@
 #assert-point(arc.c2, (w, r - kappa * r), hint: "n=2 arc c2")
 #assert-point(arc.to, (w, r), hint: "n=2 arc end")
 
-// 9. Every fit control point stays inside the fitted footprint box. The
-//    convex-hull property then keeps rendered fills inside their layout boxes
-//    at any accepted exponent. Exponents above the cap exercise the clamp.
+// Control points must stay inside the fitted footprint.
 #for n in (2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 40) {
   let piece = _superellipse-piece("top-right", pt, r, r, budget, n)
-  // Top-right canonical frame: the fitted box is [w - p, w] x [0, p].
   for seg in piece.full {
     for cp in (seg.from, seg.c1, seg.c2, seg.to) {
       assert(

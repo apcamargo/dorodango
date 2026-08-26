@@ -1,14 +1,7 @@
-// Argument matrices for the rendered parity tests.
-//
-// Each list is imported by both the `test.typ` and the `ref.typ` of its test,
-// so a case is written once and rendered twice: once through
-// `squircle(smoothing: 0%)` and once through `rect`. There is deliberately no
-// per-side hook here -- if the two documents could disagree about a case, the
-// comparison would not mean anything.
+// Cases are imported by both the implementation and reference documents.
 
 #let size = (width: 80pt, height: 50pt)
 
-// -- radius, scalar forms ---------------------------------------------------
 
 #let radius-scalar = (
   arguments(..size, radius: 10pt, fill: black),
@@ -21,17 +14,16 @@
   arguments(..size, radius: 50%, fill: black),
   arguments(..size, radius: 100%, fill: black),
   arguments(..size, radius: 30% + 5pt, fill: black),
-  // Well past what fits: both must clamp to the same place.
+  // Radius values above the limit must clamp.
   arguments(..size, radius: 60pt, fill: black),
   arguments(..size, radius: -5pt, fill: black),
-  // The short side is the vertical one here, which swaps which side clamps.
+  // The short side changes which edge clamps.
   arguments(width: 50pt, height: 80pt, radius: 50%, fill: black),
   arguments(width: 50pt, height: 80pt, radius: 30pt, fill: black),
 )
 
-// -- radius, dictionary forms ----------------------------------------------
 
-// Corner-precedence cases rendered end to end against `rect`.
+// Corner precedence is checked through the rendered result.
 #let radius-dict = (
   arguments(..size, radius: (rest: 10pt), fill: black),
   arguments(..size, radius: (top-left: 10pt), fill: black),
@@ -48,7 +40,7 @@
     radius: (top-left: 30pt, bottom-right: 15pt, rest: 0pt),
     fill: black,
   ),
-  // Neighbouring corners fighting over the same side.
+  // Adjacent corners share an edge budget.
   arguments(
     ..size,
     radius: (
@@ -72,7 +64,6 @@
   ),
 )
 
-// -- outset -----------------------------------------------------------------
 
 #let outset-cases = (
   arguments(..size, outset: 10pt, radius: 12pt, fill: black),
@@ -86,18 +77,14 @@
   ),
   arguments(..size, outset: (x: 10pt), radius: 12pt, fill: black),
   arguments(..size, outset: -5pt, radius: 12pt, fill: black),
-  // Outsets change the box the radius is clamped against.
+  // Outsets also change the radius budget.
   arguments(..size, outset: 10pt, radius: 50%, fill: black),
   arguments(..size, outset: 10pt, radius: 60pt, fill: black),
 )
 
-// -- radius zero ------------------------------------------------------------
 
-// Kept apart from everything else, and kept on whole points: with no rounding
-// anywhere `rect` keeps a plain rectangle primitive, which Typst rasterises
-// through a pixel-snapped fast path, while `squircle` always emits a curve.
-// On the pixel grid the two still agree exactly; off it they can differ by a
-// sub-pixel sliver along each edge. See `tests/parity/radius-zero/test.typ`.
+// Keep zero-radius cases on whole points. Typst snaps plain rectangles
+// differently from paths at fractional coordinates.
 #let radius-zero = (
   arguments(..size, radius: 0pt, fill: black),
   arguments(..size, radius: 0%, fill: black),
@@ -107,13 +94,9 @@
   arguments(..size, radius: 0pt, stroke: 4pt + black),
 )
 
-// -- fractional geometry ----------------------------------------------------
 
-// Everything else in this file sits on whole points, which at 144 ppi lands on
-// exact pixel boundaries -- so an exact match there could in principle be the
-// pixel grid hiding a sub-pixel disagreement. These sizes, radii and stroke
-// widths deliberately fall between pixels. Rounded shapes still match exactly,
-// which is the stronger statement.
+// These cases use fractional coordinates to avoid pixel-grid agreement hiding
+// small differences.
 #let fractional = (
   arguments(width: 80.37pt, height: 50.13pt, radius: 9.31pt, fill: black),
   arguments(width: 80.37pt, height: 50.13pt, radius: 23.7%, fill: black),
@@ -150,12 +133,8 @@
   ),
 )
 
-// -- fractional heights -----------------------------------------------------
 
-// A fraction is resolved by the layout engine, and `layout()` reports the
-// region it was measured against rather than the resolved size, so `squircle`
-// has to recover the drawn height through a nested `100%` block. Each of these
-// is a container that resolves `1fr` differently.
+// Each case resolves `1fr` in a different container.
 #let fraction-layouts = (
   shape => box(width: 120pt, height: 120pt)[
     #block(height: 40pt, spacing: 0pt)
@@ -187,8 +166,7 @@
     rows: (80pt,),
     [a], shape(width: 100%, height: 1fr, radius: 14pt, fill: lime),
   ),
-  // A ratio radius on a fractional height: the radius can only be resolved
-  // once the fraction has been.
+  // Resolve the ratio radius after the fractional height.
   shape => box(width: 120pt, height: 100pt)[
     #block(height: 20pt, spacing: 0pt)
     #shape(width: 100%, height: 1fr, radius: 50%, fill: yellow, stroke: 2pt)
@@ -207,10 +185,9 @@
   ],
 )
 
-// -- strokes, one pen all round ---------------------------------------------
 
 #let stroke-uniform = (
-  // `auto` is a 1pt black stroke, but only while nothing fills the shape.
+  // `auto` draws the default stroke only when no fill is set.
   arguments(..size, radius: 12pt),
   arguments(..size, radius: 12pt, fill: aqua, stroke: auto),
   arguments(..size, radius: 12pt, fill: aqua, stroke: none),
@@ -232,8 +209,7 @@
     thickness: 6pt,
     join: "round",
   )),
-  // A ratio radius resolves against the short side plus the thinner of the two
-  // strokes meeting at the corner.
+  // The thinner adjacent stroke affects the radius budget.
   arguments(..size, radius: 25%, stroke: 6pt + navy),
   arguments(..size, radius: 50%, stroke: 6pt + navy),
   arguments(..size, radius: 100%, stroke: 8pt + navy),
@@ -241,8 +217,7 @@
   arguments(..size, radius: -5pt, stroke: 4pt + navy),
 )
 
-// Solid sides of a different thickness but the same paint are one continuous
-// ring. A bare paint receives `rect`'s 1pt default thickness.
+// Same-color sides form one ring, even with different thicknesses.
 #let stroke-joins = (
   arguments(width: 80pt, height: 50pt, radius: 12pt, stroke: red),
   arguments(
@@ -269,7 +244,6 @@
   ),
 )
 
-// -- strokes, per side ------------------------------------------------------
 
 #let stroke-per-side = (
   arguments(
@@ -308,9 +282,7 @@
       left: 4pt + orange,
     ),
   ),
-  // Adjacent sides of different thickness: the thinner one decides how much
-  // radius the drawn outline keeps, and the corner is filled rather than
-  // stroked.
+  // The thinner adjacent side limits the drawn radius.
   arguments(
     ..size,
     radius: 20pt,
@@ -326,16 +298,13 @@
     x: 10pt + red,
     y: 3pt + blue,
   )),
-  // An unstroked side lends its neighbour half its thickness, but only while
-  // the radius is wide enough for the cap to keep its shape.
+  // An unstroked side can leave a cap on its neighbor.
   arguments(..size, radius: 3pt, stroke: (top: 4pt + red)),
   arguments(..size, radius: 3pt, stroke: (top: 6pt + red, left: 6pt + blue)),
 )
 
-// -- strokes, thick enough to become a filled ring --------------------------
 
-// Once the pen is wider than twice the radius, `rect` stops stroking the
-// outline and fills a ring instead. These straddle that switch.
+// These cases cross the switch from an outline to a filled ring.
 #let stroke-thick = (
   arguments(..size, radius: 6pt, stroke: 11.5pt + navy),
   arguments(..size, radius: 6pt, stroke: 12pt + navy),
@@ -351,10 +320,8 @@
   arguments(..size, radius: 6pt, stroke: 16pt + gradient.linear(red, blue)),
 )
 
-// -- stroke caps ------------------------------------------------------------
 
-// A cap is only drawn where a stroke really ends, which is where the
-// neighbouring side is unstroked.
+// Caps appear where a neighboring side is unstroked.
 #let stroke-caps = (
   arguments(..size, radius: 14pt, stroke: (
     top: (paint: red, thickness: 5pt, cap: "butt"),
@@ -369,8 +336,7 @@
     radius: 14pt,
     stroke: (top: (paint: red, thickness: 5pt, cap: "round")),
   ),
-  // Small radii keep the plain butt end, since anything else would be
-  // misshapen there.
+  // Small radii fall back to a butt end.
   arguments(
     ..size,
     radius: 2pt,
@@ -391,7 +357,6 @@
   ),
 )
 
-// -- fills ------------------------------------------------------------------
 
 #let fills = (
   arguments(..size, radius: 12pt, fill: gradient.linear(yellow, red)),
@@ -405,7 +370,6 @@
   arguments(..size, radius: 12pt, fill: aqua, stroke: 3pt + navy),
 )
 
-// -- insets, with a body ----------------------------------------------------
 
 #let insets = (
   arguments(radius: 12pt, fill: aqua)[Hello],

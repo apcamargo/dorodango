@@ -1,5 +1,3 @@
-// Checked-in source-level oracles rendered in the same grid as test.typ.
-
 #import "/tests/_helpers/helpers.typ": case-grid
 #import "cases.typ": cases
 

@@ -1,16 +1,10 @@
-/// The wording of a rejection is part of the API: it is what a user sees when
-/// they misspell a corner. These are asserted in full rather than by substring
-/// so that a diagnostic cannot quietly degrade into something less specific.
-///
-/// `catch` prefixes panics with "panicked with: ", and every `squircle`
-/// diagnostic then names the package and the offending parameter.
+/// Error messages are part of the public API. Assert the complete message.
 
 #import "/src/lib.typ": clothoid, squircle, superellipse
 
 #let message-of(fn) = catch(fn)
 #let expect(fn, text) = assert.eq(catch(fn), "panicked with: squircle: " + text)
 
-// -- Wrong types -----------------------------------------------------------
 
 #expect(
   () => squircle(radius: auto),
@@ -39,7 +33,7 @@
   "per-edge-smoothing: expected boolean, found integer",
 )
 
-// The key of the offending entry is named, not just the parameter.
+// Name the offending dictionary key.
 #expect(
   () => squircle(radius: (top: "x")),
   "radius.top: expected relative length, found string",
@@ -49,7 +43,6 @@
   "inset.x: expected relative length, found fraction",
 )
 
-// -- Unknown keys ----------------------------------------------------------
 
 // A misspelled corner lists every key that would have worked.
 #expect(
@@ -79,7 +72,7 @@
     + "\"right\", \"bottom\", \"x\", \"y\", and \"rest\"",
 )
 
-// Several bad keys are listed together, and the noun agrees in number.
+// List multiple bad keys with the correct plural form.
 #expect(
   () => squircle(radius: (foo: 1pt, bar: 2pt)),
   "radius: unexpected keys \"foo\" and \"bar\", valid keys are \"top-left\", "
@@ -92,25 +85,21 @@
     + "\"left\", \"top\", \"right\", \"bottom\", \"x\", \"y\", and \"rest\"",
 )
 
-// -- Strokes ---------------------------------------------------------------
 
-// A dictionary that is neither a side dictionary nor a property dictionary is
-// reported as the mix-up it is, rather than as an unknown key.
+// Distinguish mixed stroke dictionaries from unknown keys.
 #expect(
   () => squircle(stroke: (top: red, paint: blue)),
   "stroke: cannot mix side keys with stroke-property keys",
 )
 
-// `auto` means "the default stroke" for the whole parameter, but there is no
-// such thing for one side, so the per-side message leaves it out of the list.
+// A side cannot use the whole-stroke `auto` value.
 #expect(
   () => squircle(stroke: (top: auto)),
   "stroke.top: expected length, color, gradient, tiling, dictionary, stroke, "
     + "or none, found auto",
 )
 
-// An unknown key could have been meant as either kind, so both sets are
-// offered rather than guessing which dictionary the user was aiming for.
+// Show both key sets when the dictionary kind is unclear.
 #expect(
   () => squircle(stroke: (paint: red, bogus: 2pt)),
   "stroke: unexpected key \"bogus\", valid keys are \"left\", \"top\", "
@@ -118,7 +107,6 @@
     + "\"thickness\", \"cap\", \"join\", \"dash\", and \"miter-limit\"",
 )
 
-// -- Body ------------------------------------------------------------------
 
 #expect(
   () => squircle(body: [a]),
@@ -133,34 +121,26 @@
   "body: expected content, string, symbol, or none, found integer",
 )
 
-// -- Unknown parameters ----------------------------------------------------
 
-// The body sink swallows every named argument, so a misspelt parameter has to
-// be reported as the typo it is rather than as a misplaced body. The wording
-// is `rect`'s: `#rect(radiuss: 5pt)` says `unexpected argument: radiuss`.
+// Report unknown names as argument errors, matching `rect`.
 #expect(() => squircle(radiuss: 5pt), "unexpected argument: radiuss")
 
-// `body:` is checked before any other name, so its own message is what a
-// caller sees whichever order the arguments came in.
+// Check `body:` before other unexpected names.
 #expect(
   () => squircle(foo: 1pt, body: [a]),
   "unexpected named argument \"body\"; the body must be specified positionally",
 )
 
-// -- Nothing is raised for valid input -------------------------------------
 
-// Proves the harness can tell the two apart, rather than reporting a panic for
-// everything it is handed.
+// Check that valid calls do not panic.
 #assert.eq(message-of(() => squircle(radius: 5pt)), none)
 #assert.eq(message-of(() => squircle(radius: (top-left: 5pt))), none)
 #assert.eq(message-of(() => squircle(stroke: (top: red))), none)
 #assert.eq(message-of(() => squircle[body]), none)
 
-// -- Smoothing-specific contract ------------------------------------------
 
-// `smoothing` accepts the same relative spellings as `radius`, including a
-// per-corner dictionary. Values outside the visual range are accepted here;
-// `smoothing/clamping` proves their rendered result is clamped.
+// Smoothing accepts relative values and corner dictionaries. Clamping is
+// checked by the rendered smoothing tests.
 #for value in (
   0%,
   60%,
@@ -177,8 +157,7 @@
   assert.eq(catch(() => squircle(smoothing: value)), none)
 }
 
-// Values and dictionary keys outside that contract are rejected rather than
-// silently coerced or ignored.
+// Reject invalid values and dictionary keys.
 #for value in (
   "x",
   3,
@@ -206,7 +185,6 @@
   assert-panic(() => squircle(per-edge-smoothing: value))
 }
 
-// -- Superellipse-specific validation --------------------------------------
 
 #expect(
   () => superellipse(exponent: "x"),
@@ -240,7 +218,6 @@
   assert.eq(catch(() => superellipse(exponent: value)), none)
 }
 
-// -- Clothoid-specific validation ------------------------------------------
 
 #expect(
   () => clothoid(smoothing: "x"),

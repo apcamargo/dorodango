@@ -1,12 +1,4 @@
-/// `squircle` must occupy exactly the space `rect` would.
-///
-/// This is checked through `measure()` rather than by rendering, so a
-/// disagreement is reported as two numbers instead of as a pile of differing
-/// pixels. Both shapes are measured in the same document and the same region,
-/// so fonts and layout context cancel out.
-///
-/// `smoothing` is deliberately left at its default: it changes the drawing, and
-/// must never change the box.
+/// Shape and rect must report the same measured box.
 
 #import "/tests/_helpers/helpers.typ": measure-parity
 
@@ -18,7 +10,6 @@
 #import "/src/lib.typ": clothoid, squircle, superellipse
 
 #let cases = (
-  // -- Empty shapes ---------------------------------------------------------
   // With no body and no size, both fall back to 45pt x 30pt, capped by the
   // region.
   ("empty, unbounded", arguments(), unbounded),
@@ -26,7 +17,6 @@
   ("empty, region 100x15", arguments(), arguments(width: 100pt, height: 15pt)),
   ("empty, region 20x100", arguments(), arguments(width: 20pt, height: 100pt)),
 
-  // -- Auto size driven by the body ----------------------------------------
   ("body, default inset", arguments(body), wide),
   ("body, inset 0pt", arguments(inset: 0pt, body), wide),
   ("body, inset 10pt", arguments(inset: 10pt, body), wide),
@@ -52,7 +42,6 @@
   ("body, unbounded", arguments(body), unbounded),
   ("body, inset 25%, unbounded", arguments(inset: 25%, body), unbounded),
 
-  // -- Line breaking --------------------------------------------------------
   // These are what exercise the fixed-point width iteration: the width fed to
   // the line breaker depends on the box width, which depends on the resulting
   // layout.
@@ -69,7 +58,6 @@
   ),
   ("long, overflowing 60pt", arguments(long), arguments(width: 60pt)),
 
-  // -- Explicit sizes -------------------------------------------------------
   (
     "width 70%, height 70%",
     arguments(width: 70%, height: 70%),
@@ -102,7 +90,6 @@
   ("width 120pt + long body", arguments(width: 120pt, long), wide),
   ("height 80pt + body", arguments(height: 80pt, body), wide),
 
-  // -- Outset ---------------------------------------------------------------
   // `outset` expands the drawing only; the layout box is unchanged.
   (
     "outset 10pt",
@@ -111,14 +98,12 @@
   ),
   ("outset 10% + body", arguments(outset: 10%, body), wide),
 
-  // -- Other bodies ---------------------------------------------------------
   ("body = block(100%)", arguments(block(width: 100%, height: 20pt)), wide),
   ("body = list", arguments(list([a], [b])), wide),
   ("body = three lines", arguments([a\ b\ c]), wide),
   ("body = empty content", arguments([]), wide),
   ("body = str", arguments("hello"), wide),
 
-  // -- Fractions ------------------------------------------------------------
   // A fraction is resolved by the layout engine after `measure()` has already
   // answered, so both report a zero height here.
   (

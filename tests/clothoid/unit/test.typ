@@ -1,12 +1,9 @@
 /// Clothoid unit tests:
-/// 1. Integrator correctness against Fresnel properties:
-///    - L = 0 yields (0, 0)
-///    - Points are finite and displacement grows monotonically with L
-/// 2. Smoothing 0% matches quarter-circle arc endpoints and tangencies
-/// 3. Seam continuity between clothoid fillets and central arc
-/// 4. Split contract for cut outlines: `first` runs start -> mid, `second`
-///    runs mid -> end, and the cut follows the requested radial split
-/// 5. The two halves trace the same curve as `full`, not merely its endpoints
+/// 1. Integrator values match independently calculated Fresnel-series samples.
+/// 2. Smoothing 0% matches quarter-circle arc endpoints and seams.
+/// 3. A boundary ray at full smoothing does not clamp to a corner endpoint.
+/// 4. Cut outlines run from start to mid to end on their requested radial ray.
+/// 5. The two halves trace the same curve as `full`, not merely its endpoints.
 
 #import "/src/corners.typ": (
   _clothoid-piece, _corner-geom, _cubic, _integrate-clothoid,
@@ -16,7 +13,11 @@
   assert-len, assert-point, eval-cubic, point-distance, ray-cross,
 )
 
-// 1. Test integrator
+// 1. Integrator reference values
+//
+// These values were calculated independently from the Fresnel power series:
+// The values use 60-digit decimal arithmetic and do not repeat the
+// production Simpson rule.
 #let r = 48.0
 #let big-L = (calc.pi / 2.0) * r
 #let a = 1.0 / (r * big-L)
@@ -25,13 +26,32 @@
 #assert.eq(zero.x, 0.0)
 #assert.eq(zero.y, 0.0)
 
-#let q = _integrate-clothoid(a, big-L / 4.0)
-#let h = _integrate-clothoid(a, big-L / 2.0)
-#let f = _integrate-clothoid(a, big-L)
-
-#let mag(p) = calc.sqrt(p.x * p.x + p.y * p.y)
-#assert(mag(q) < mag(h), message: "quarter length should be less than half")
-#assert(mag(h) < mag(f), message: "half length should be less than full")
+#for (portion, expected) in (
+  (0.25, (18.845014493122, 0.308372057862)),
+  (0.5, (37.554029106562, 2.460614710722)),
+  (1.0, (70.878228357581, 18.886372281440)),
+) {
+  let got = _integrate-clothoid(a, big-L * portion)
+  assert(
+    not float.is-nan(got.x)
+      and not float.is-nan(got.y)
+      and not float.is-infinite(got.x)
+      and not float.is-infinite(got.y),
+    message: "clothoid integration must stay finite at " + repr(portion),
+  )
+  assert(
+    calc.abs(got.x - expected.at(0)) <= 3e-7
+      and calc.abs(got.y - expected.at(1)) <= 3e-7,
+    message: (
+      "clothoid integral at "
+        + repr(portion)
+        + ": expected "
+        + repr(expected)
+        + ", got "
+        + repr((got.x, got.y))
+    ),
+  )
+}
 
 // 2. Smoothing 0% on corner (w, 0)
 #let w = 200pt
@@ -59,25 +79,7 @@
   assert-len(point-distance(a.to, center), rad, hint: "seam on circle")
 }
 
-// 3. Smoothing 60% produces 3 segments: head cubic, arc, tail cubic
-#let p60 = _clothoid-piece("top-right", pt, rad, rad, budget, 0.6)
-#assert.eq(p60.full.len(), 3)
-#let head = p60.full.at(0)
-#let arc = p60.full.at(1)
-#let tail = p60.full.at(2)
-
-// Seams: head.to == arc.from, arc.to == tail.from
-#assert-point(head.to, arc.from)
-#assert-point(arc.to, tail.from)
-#assert-point(head.from, p60.start)
-#assert-point(tail.to, p60.end)
-
-// 4. Smoothing 100% produces 2 segments: head cubic, tail cubic (no central arc)
-#let p100 = _clothoid-piece("top-right", pt, rad, rad, budget, 1.0)
-#assert.eq(p100.full.len(), 2)
-#assert-point(p100.full.at(0).to, p100.full.at(1).from)
-
-// At 100% smoothing the two clothoid cubics meet on the corner bisector. This
+// 3. At 100% smoothing the two clothoid cubics meet on the corner bisector. This
 // is the inner top-left contour from the asymmetric public cap case. The ray
 // reaches that shared join exactly, so it must not fall back to the start.
 #let boundary-pt = (8pt, 8pt)

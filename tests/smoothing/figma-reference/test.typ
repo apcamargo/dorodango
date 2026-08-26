@@ -1,11 +1,9 @@
 /// [max-deviations: 2]
 ///
-/// Rendered exported-API parity with the independent figma-squircle reference
-/// implementation. These cases cover both ordinary smoothing and the
-/// constrained `preserve-smoothing` branch that has no `rect` equivalent.
+/// Compare smoothing with the pinned figma-squircle fixtures.
 ///
-/// The SVG arc renderer differs from Typst's cubic arc approximation by two
-/// antialiased pixels at 144 ppi; the allowance is the measured baseline.
+/// The allowance covers the measured two-pixel difference between SVG arcs and
+/// Typst cubic arcs at 144 ppi.
 
 #import "/src/lib.typ": squircle
 #import "/tests/_helpers/helpers.typ": case-grid

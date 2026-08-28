@@ -92,7 +92,12 @@
 )
 
 // Compare paints via representation to handle gradients and patterns.
-#let _paint-eq(a, b) = repr(a) == repr(b)
+#let _paint-eq(a, b) = {
+  if a == b { true }
+  else if type(a) == color or type(b) == color { false }
+  else if type(a) != type(b) { false }
+  else { repr(a) == repr(b) }
+}
 
 // Compare stroke fields with paint representation equality.
 #let _fixed-eq(a, b) = {

@@ -177,15 +177,17 @@
 // Split cubic segments where they cross the ray from center through split.
 #let _split-segs-on-ray(segs, center, split) = {
   let direction = _vsub(split, center)
-  if _hypot(direction) == 0pt {
+  let dir-len = _hypot(direction)
+  if dir-len == 0pt {
     return (mid: segs.first().from, first: (), second: segs)
   }
+  let dir-len-num = dir-len / 1pt
 
   // Check segment endpoints close to the ray.
   let near-ray(point) = {
     let scale = calc.max(
       1.0,
-      (_hypot(_vsub(point, center)) / 1pt) * (_hypot(direction) / 1pt),
+      (_hypot(_vsub(point, center)) / 1pt) * dir-len-num,
     )
     calc.abs(_ray-cross(center, direction, point)) <= 1e-10 * scale
   }
